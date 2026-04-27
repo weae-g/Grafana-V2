@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(mkdir -p \"d:/_project/Отчёты/Grafana/agent\")",
+      "Bash(mkdir -p \"d:/_project/Отчёты/Grafana/server/grafana/provisioning/datasources\")",
+      "Bash(mkdir -p \"d:/_project/Отчёты/Grafana/server/grafana/provisioning/dashboards\")",
+      "Bash(mkdir -p \"d:/_project/Отчёты/Grafana/server/grafana/dashboards\")"
+    ]
+  }
+}

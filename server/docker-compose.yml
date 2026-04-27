@@ -1,0 +1,53 @@
+version: "3.9"
+
+services:
+
+  influxdb:
+    image: influxdb:2.7
+    container_name: keenetic-influxdb
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8086:8086"   # InfluxDB не торчит наружу, только внутри docker
+    volumes:
+      - influxdb-data:/var/lib/influxdb2
+      - influxdb-config:/etc/influxdb2
+    env_file: .env
+    healthcheck:
+      test: ["CMD", "influx", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  receiver:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: keenetic-receiver
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./receiver.log:/app/receiver.log
+    env_file: .env
+    depends_on:
+      influxdb:
+        condition: service_healthy
+
+  grafana:
+    image: grafana/grafana:10.2.0
+    container_name: keenetic-grafana
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning
+      - ./grafana/dashboards:/var/lib/grafana/dashboards
+    env_file: .env
+    depends_on:
+      - influxdb
+
+volumes:
+  influxdb-data:
+  influxdb-config:
+  grafana-data:

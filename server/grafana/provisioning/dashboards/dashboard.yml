@@ -1,0 +1,11 @@
+apiVersion: 1
+
+providers:
+  - name: Keenetic
+    orgId: 1
+    folder: Keenetic
+    type: file
+    disableDeletion: false
+    editable: true
+    options:
+      path: /var/lib/grafana/dashboards
