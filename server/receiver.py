@@ -230,6 +230,63 @@ def write_version(router: str, ts: int, data: dict):
     write_api.write(bucket=BUCKET, org=ORG, record=p)
 
 
+def write_dhcp(router: str, ts: int, data):
+    if not data:
+        return
+    entries = data if isinstance(data, list) else [data]
+    points = []
+    for e in entries:
+        if not isinstance(e, dict):
+            continue
+        ip = str(e.get("ip", ""))
+        mac = str(e.get("mac", ""))
+        if not ip and not mac:
+            continue
+        hostname = str(e.get("hostname") or e.get("name") or mac)
+        p = (
+            Point("device_seen")
+            .tag("router", router)
+            .tag("source", "dhcp")
+            .tag("ip", ip)
+            .tag("mac", mac)
+            .tag("hostname", hostname)
+            .field("online", 1)
+            .time(ns(ts))
+        )
+        points.append(p)
+    if points:
+        write_api.write(bucket=BUCKET, org=ORG, record=points)
+
+
+def write_arp(router: str, ts: int, data):
+    if not data:
+        return
+    entries = data if isinstance(data, list) else [data]
+    points = []
+    for e in entries:
+        if not isinstance(e, dict):
+            continue
+        ip = str(e.get("ip", ""))
+        mac = str(e.get("mac", ""))
+        if not ip and not mac:
+            continue
+        iface = str(e.get("interface") or e.get("iface") or "")
+        p = (
+            Point("device_seen")
+            .tag("router", router)
+            .tag("source", "arp")
+            .tag("ip", ip)
+            .tag("mac", mac)
+            .tag("hostname", ip)
+            .tag("interface", iface)
+            .field("online", 1)
+            .time(ns(ts))
+        )
+        points.append(p)
+    if points:
+        write_api.write(bucket=BUCKET, org=ORG, record=points)
+
+
 WRITERS = {
     "system":    write_system,
     "interface": write_interfaces,
@@ -237,6 +294,8 @@ WRITERS = {
     "wireguard": write_wireguard,
     "hotspot":   write_hotspot,
     "version":   write_version,
+    "dhcp":      write_dhcp,
+    "arp":       write_arp,
 }
 
 
