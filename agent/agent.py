@@ -128,21 +128,24 @@ class KeeneticClient:
             return None
 
 
-ENDPOINTS = {
-    "system":      "/rci/show/system",
-    "interface":   "/rci/show/interface",
-    "lte":         "/rci/show/interface/UsbLte0",
-    "wireguard":   "/rci/show/interface/Wireguard0",
-    "hotspot":     "/rci/show/ip/hotspot",
-    "dhcp":        "/rci/show/ip/dhcp/bindings",
-    "arp":         "/rci/show/ip/arp",
-    "version":     "/rci/show/version",
-}
+def build_endpoints(cfg: dict) -> dict:
+    lte_iface = cfg.get("LTE_INTERFACE", "UsbLte0")
+    wg_iface  = cfg.get("WG_INTERFACE",  "Wireguard1")
+    return {
+        "system":    "/rci/show/system",
+        "interface": "/rci/show/interface",
+        "lte":       f"/rci/show/interface/{lte_iface}",
+        "wireguard": f"/rci/show/interface/{wg_iface}",
+        "hotspot":   "/rci/show/ip/hotspot",
+        "dhcp":      "/rci/show/ip/dhcp/bindings",
+        "arp":       "/rci/show/ip/arp",
+        "version":   "/rci/show/version",
+    }
 
 
-def collect(client: KeeneticClient) -> Dict[str, Any]:
+def collect(client: KeeneticClient, endpoints: dict) -> Dict[str, Any]:
     metrics: Dict[str, Any] = {}
-    for name, endpoint in ENDPOINTS.items():
+    for name, endpoint in endpoints.items():
         data = client.get(endpoint)
         if data is not None:
             metrics[name] = data
@@ -194,10 +197,12 @@ def main():
         cfg["KEENETIC_PASS"],
     )
     interval = int(cfg["POLL_INTERVAL"])
+    endpoints = build_endpoints(cfg)
 
     log.info(
         f"Agent starting | router={cfg['ROUTER_ID']} "
         f"keenetic={cfg['KEENETIC_IP']}:{cfg['KEENETIC_PORT']} "
+        f"wg={cfg.get('WG_INTERFACE','Wireguard1')} lte={cfg.get('LTE_INTERFACE','UsbLte0')} "
         f"receiver={cfg['RECEIVER_URL']} interval={interval}s"
     )
 
@@ -206,7 +211,7 @@ def main():
     while True:
         start = time.time()
         try:
-            metrics = collect(client)
+            metrics = collect(client, endpoints)
             if metrics:
                 send(metrics, cfg["ROUTER_ID"], cfg["RECEIVER_URL"], fernet)
             else:

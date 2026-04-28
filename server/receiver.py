@@ -183,7 +183,14 @@ def write_wireguard(router: str, ts: int, data: dict):
 def write_hotspot(router: str, ts: int, data):
     if not data:
         return
-    hosts = data if isinstance(data, list) else [data]
+    # Keenetic wraps the list: {"host": [...]} or returns a list directly
+    if isinstance(data, dict) and "host" in data:
+        raw = data["host"]
+        hosts = raw if isinstance(raw, list) else [raw]
+    elif isinstance(data, list):
+        hosts = data
+    else:
+        hosts = [data]
     active_hosts = [h for h in hosts if isinstance(h, dict) and h.get("active")]
 
     summary = (

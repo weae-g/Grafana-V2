@@ -438,6 +438,109 @@
           "query": "from(bucket: \"keenetic\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"hotspot_host\" and r._field == \"tx_bytes\" and r.router =~ /^${router:regex}$/)\n  |> derivative(unit: 1s, nonNegative: true)\n  |> map(fn: (r) => ({r with _value: r._value * -1.0, _field: \"⬆ \" + r.hostname}))"
         }
       ]
+    },
+    {
+      "id": 50,
+      "type": "row",
+      "title": "Станции / Радиомодемы (Ping Monitor)",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 93 },
+      "collapsed": false
+    },
+    {
+      "id": 51,
+      "type": "stat",
+      "title": "Онлайн сейчас",
+      "description": "Количество станций отвечающих на ping прямо сейчас",
+      "gridPos": { "h": 4, "w": 4, "x": 0, "y": 94 },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": { "mode": "absolute", "steps": [
+            { "color": "red", "value": null },
+            { "color": "yellow", "value": 1 },
+            { "color": "green", "value": 3 }
+          ]}
+        }
+      },
+      "targets": [{
+        "refId": "A",
+        "datasource": { "type": "influxdb" },
+        "query": "from(bucket: \"keenetic\")\n  |> range(start: -2m)\n  |> filter(fn: (r) => r._measurement == \"device_ping\" and r._field == \"up\")\n  |> last()\n  |> sum()"
+      }]
+    },
+    {
+      "id": 52,
+      "type": "table",
+      "title": "Статус станций",
+      "description": "Ping-статус каждой удалённой станции. up=1 — онлайн, up=0 — нет ответа.",
+      "gridPos": { "h": 8, "w": 10, "x": 0, "y": 98 },
+      "options": { "sortBy": [{ "displayName": "Имя", "desc": false }], "footer": { "show": false } },
+      "fieldConfig": {
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "up" }, "properties": [
+            { "id": "displayName", "value": "Статус" },
+            { "id": "mappings", "value": [
+              { "type": "value", "options": { "1": { "text": "ОНЛАЙН", "color": "green" }, "0": { "text": "ОФЛАЙН", "color": "red" } } }
+            ]},
+            { "id": "custom.displayMode", "value": "color-background" }
+          ]},
+          { "matcher": { "id": "byName", "options": "rtt_ms" }, "properties": [{ "id": "displayName", "value": "Задержка, мс" }, { "id": "unit", "value": "ms" }] },
+          { "matcher": { "id": "byName", "options": "name" }, "properties": [{ "id": "displayName", "value": "Имя" }] },
+          { "matcher": { "id": "byName", "options": "ip" }, "properties": [{ "id": "displayName", "value": "IP" }] }
+        ]
+      },
+      "targets": [{
+        "refId": "A",
+        "datasource": { "type": "influxdb" },
+        "query": "from(bucket: \"keenetic\")\n  |> range(start: -2m)\n  |> filter(fn: (r) => r._measurement == \"device_ping\")\n  |> last()\n  |> pivot(rowKey: [\"name\", \"ip\"], columnKey: [\"_field\"], valueColumn: \"_value\")\n  |> keep(columns: [\"name\", \"ip\", \"up\", \"rtt_ms\"])"
+      }]
+    },
+    {
+      "id": 53,
+      "type": "state-timeline",
+      "title": "История подключений станций",
+      "description": "Зелёный = станция отвечает. Серый = нет ответа. Виден точный момент включения/отключения.",
+      "gridPos": { "h": 10, "w": 14, "x": 10, "y": 98 },
+      "options": {
+        "mergeValues": false,
+        "showValue": "never",
+        "alignValue": "center",
+        "rowHeight": 0.9,
+        "legend": { "displayMode": "list", "placement": "bottom" }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": { "lineWidth": 0, "fillOpacity": 80 },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "green", "value": 1 }
+            ]
+          }
+        }
+      },
+      "targets": [{
+        "refId": "A",
+        "datasource": { "type": "influxdb" },
+        "query": "from(bucket: \"keenetic\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"device_ping\" and r._field == \"up\")\n  |> aggregateWindow(every: v.windowPeriod, fn: last, createEmpty: true)\n  |> map(fn: (r) => ({r with _value: if exists r._value then r._value else 0}))"
+      }]
+    },
+    {
+      "id": 54,
+      "type": "timeseries",
+      "title": "Задержка (RTT) по станциям",
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 108 },
+      "fieldConfig": {
+        "defaults": { "unit": "ms", "min": 0 },
+        "overrides": []
+      },
+      "targets": [{
+        "refId": "A",
+        "datasource": { "type": "influxdb" },
+        "query": "from(bucket: \"keenetic\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"device_ping\" and r._field == \"rtt_ms\")\n  |> aggregateWindow(every: v.windowPeriod, fn: mean)"
+      }]
     }
   ]
 }

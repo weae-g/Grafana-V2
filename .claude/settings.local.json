@@ -4,7 +4,10 @@
       "Bash(mkdir -p \"d:/_project/Отчёты/Grafana/agent\")",
       "Bash(mkdir -p \"d:/_project/Отчёты/Grafana/server/grafana/provisioning/datasources\")",
       "Bash(mkdir -p \"d:/_project/Отчёты/Grafana/server/grafana/provisioning/dashboards\")",
-      "Bash(mkdir -p \"d:/_project/Отчёты/Grafana/server/grafana/dashboards\")"
+      "Bash(mkdir -p \"d:/_project/Отчёты/Grafana/server/grafana/dashboards\")",
+      "Bash(git commit -m ' *)",
+      "Bash(git push *)",
+      "Bash(python3 -c ' *)"
     ]
   }
 }
