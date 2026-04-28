@@ -26,14 +26,20 @@ ssh user@central-server
 # Установить Docker одной командой
 curl -fsSL https://get.docker.com | sh
 
+# Установить Docker Compose v2 plugin (нужен отдельно на некоторых системах)
+sudo apt-get install -y docker-compose-plugin
+
 # Добавить своего пользователя в группу docker (чтобы не писать sudo)
 sudo usermod -aG docker $USER
 newgrp docker
 
-# Проверить
+# Проверить — обе команды должны выдать версию
 docker --version        # Docker version 24.x.x
 docker compose version  # Docker Compose version v2.x.x
 ```
+
+> Если `docker compose version` не работает, но работает `docker-compose --version` —  
+> у тебя старый v1. Либо установить plugin выше, либо заменить все команды на `docker-compose` (с дефисом).
 
 ### 2. Скопировать папку `server/` на сервер
 
@@ -52,6 +58,10 @@ cd /opt/keenetic-monitor
 cp .env.example .env
 nano .env
 ```
+
+> **Важно:** не добавляй комментарии (`#`) в конец строк со значениями — Docker  
+> берёт всё после `=` буквально, включая комментарий, и токен сломается.  
+> Комментарии ставь только на отдельных строках, как в `.env.example`.
 
 Обязательно заменить:
 
