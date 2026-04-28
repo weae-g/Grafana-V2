@@ -2,5 +2,5 @@ FROM python:3.11-slim
 WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
-COPY receiver.py ping_monitor.py ./
-CMD ["python", "receiver.py"]
+COPY agent.py .
+CMD ["python", "agent.py"]

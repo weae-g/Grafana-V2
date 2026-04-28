@@ -5,7 +5,7 @@ services:
     container_name: keenetic-influxdb
     restart: unless-stopped
     ports:
-      - "127.0.0.1:8086:8086"   # InfluxDB не торчит наружу, только внутри docker
+      - "127.0.0.1:8086:8086"
     volumes:
       - influxdb-data:/var/lib/influxdb2
       - influxdb-config:/etc/influxdb2
@@ -24,7 +24,21 @@ services:
     restart: unless-stopped
     ports:
       - "8080:8080"
-    env_file: .env
+    volumes:
+      - ./.env:/app/.env:ro
+    depends_on:
+      influxdb:
+        condition: service_healthy
+
+  ping_monitor:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: keenetic-ping-monitor
+    restart: unless-stopped
+    command: ["python", "ping_monitor.py"]
+    volumes:
+      - ./.env:/app/.env:ro
     depends_on:
       influxdb:
         condition: service_healthy
@@ -44,6 +58,18 @@ services:
       - GF_DEFAULT_LOCALE=ru-RU
     depends_on:
       - influxdb
+
+  agent:
+    build:
+      context: ../agent
+      dockerfile: Dockerfile
+    container_name: keenetic-agent
+    restart: unless-stopped
+    network_mode: host
+    volumes:
+      - ../agent/.env:/app/.env:ro
+    depends_on:
+      - receiver
 
 volumes:
   influxdb-data:
