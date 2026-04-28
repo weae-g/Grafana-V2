@@ -14,7 +14,7 @@
         "name": "router",
         "label": "Router",
         "type": "query",
-        "datasource": { "type": "influxdb", "uid": "${DS_INFLUXDB}" },
+        "datasource": { "type": "influxdb" },
         "query": "import \"influxdata/influxdb/schema\"\nschema.tagValues(bucket: \"keenetic\", tag: \"router\")",
         "refresh": 2,
         "multi": false,

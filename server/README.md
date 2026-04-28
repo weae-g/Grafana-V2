@@ -8,38 +8,38 @@
 
 ## Требования
 
-- Ubuntu 20.04+ / Debian 11+
-- Docker 24+ и Docker Compose v2
-- Открытые порты: `8080` (receiver), `3000` (Grafana)
+- Ubuntu 20.04+ / Debian 11+ (проверено на Ubuntu 24.04)
 - Минимум 1 GB RAM, 10 GB диска
+- Открытые порты: `8080` (receiver), `3000` (Grafana)
 
 ---
 
 ## Установка
 
-### 1. Установить Docker (если ещё не стоит)
+### 1. Установить Docker
+
+> **Не используй `apt install docker.io`** — это старый пакет Ubuntu без Compose v2.  
+> Используй официальный скрипт от Docker Inc:
 
 ```bash
-# Подключиться к серверу
-ssh user@central-server
-
-# Установить Docker одной командой
 curl -fsSL https://get.docker.com | sh
+```
 
-# Установить Docker Compose v2 plugin (нужен отдельно на некоторых системах)
-sudo apt-get install -y docker-compose-plugin
+Скрипт сам установит `docker-ce` + `docker-compose-plugin`. После установки:
 
-# Добавить своего пользователя в группу docker (чтобы не писать sudo)
+```bash
+# Добавить пользователя в группу docker
 sudo usermod -aG docker $USER
 newgrp docker
 
 # Проверить — обе команды должны выдать версию
-docker --version        # Docker version 24.x.x
+docker --version        # Docker version 29.x.x
 docker compose version  # Docker Compose version v2.x.x
 ```
 
-> Если `docker compose version` не работает, но работает `docker-compose --version` —  
-> у тебя старый v1. Либо установить plugin выше, либо заменить все команды на `docker-compose` (с дефисом).
+> **Частая ошибка:** если сначала поставил `docker.io`, а потом запустил скрипт get.docker.com —
+> два пакета конфликтуют, демон не стартует.  
+> Решение: `apt remove docker.io -y`, затем `systemctl restart docker`.
 
 ### 2. Скопировать папку `server/` на сервер
 
@@ -59,48 +59,59 @@ cp .env.example .env
 nano .env
 ```
 
-> **Важно:** не добавляй комментарии (`#`) в конец строк со значениями — Docker  
-> берёт всё после `=` буквально, включая комментарий, и токен сломается.  
-> Комментарии ставь только на отдельных строках, как в `.env.example`.
+> **Критически важно:** не пиши комментарии (`# текст`) в конце строк со значениями.  
+> Docker читает всё после `=` буквально — токен станет `my-token   # комментарий` и сломается.  
+> Комментарии только на отдельных строках (строка начинается с `#`).
 
 Обязательно заменить:
 
 | Переменная | Описание |
 |---|---|
-| `ENCRYPTION_KEY` | Пароль шифрования (тот же что на агентах) |
+| `ENCRYPTION_KEY` | Пароль шифрования (тот же что на всех агентах) |
 | `DOCKER_INFLUXDB_INIT_PASSWORD` | Пароль InfluxDB admin |
-| `DOCKER_INFLUXDB_INIT_ADMIN_TOKEN` | Токен InfluxDB (придумать длинный) |
-| `INFLUXDB_TOKEN` | Тот же токен (скопировать из строки выше) |
+| `DOCKER_INFLUXDB_INIT_ADMIN_TOKEN` | Токен InfluxDB — сгенерировать: `openssl rand -hex 32` |
+| `INFLUXDB_TOKEN` | **Тот же токен** что выше — скопировать |
 | `GF_SECURITY_ADMIN_PASSWORD` | Пароль Grafana |
 
-> Пример безопасного токена: `openssl rand -hex 32`
-
-### 3. Запустить
+### 4. Запустить
 
 ```bash
 docker compose up -d
 ```
 
-Проверить что всё запустилось:
+> **Предупреждение про `version`:** если видишь `the attribute 'version' is obsolete` — это не ошибка,
+> просто предупреждение. Compose работает нормально.
+
+Проверить что всё поднялось:
 
 ```bash
 docker compose ps
-docker compose logs -f receiver
 ```
 
-### 4. Проверить receiver
+Ожидаемый результат (все три `Up`):
+```
+NAME                STATUS
+keenetic-grafana    Up X seconds
+keenetic-influxdb   Up X seconds (healthy)
+keenetic-receiver   Up X seconds
+```
+
+### 5. Проверить receiver
 
 ```bash
+# Только GET, не POST
 curl http://localhost:8080/health
 # {"status": "ok", "influxdb": true}
 ```
 
-### 5. Открыть Grafana
+> **Частая ошибка:** `/health` принимает только GET. `curl -X POST /health` вернёт 405 — это нормально.
+
+### 6. Открыть Grafana
 
 Перейти в браузере: `http://your-server-ip:3000`
 
-- Логин: значение `GF_SECURITY_ADMIN_USER` (по умолчанию `admin`)
-- Пароль: значение `GF_SECURITY_ADMIN_PASSWORD`
+- Логин: `GF_SECURITY_ADMIN_USER` (по умолчанию `admin`)
+- Пароль: `GF_SECURITY_ADMIN_PASSWORD`
 
 Дашборд **Keenetic Monitor** появится автоматически в папке **Keenetic**.
 
@@ -140,18 +151,12 @@ server/
 DOCKER_INFLUXDB_INIT_RETENTION=720h   # 30 дней ≈ 16 GB
 ```
 
-InfluxDB автоматически удаляет данные старше этого периода. Изменить retention уже после запуска:
+Изменить retention уже после запуска:
 
 ```bash
-# Найти bucket ID
 docker exec keenetic-influxdb influx bucket list --org keenetic --token YOUR_TOKEN
-
-# Обновить retention
 docker exec keenetic-influxdb influx bucket update \
-  --id BUCKET_ID \
-  --retention 1080h \
-  --org keenetic \
-  --token YOUR_TOKEN
+  --id BUCKET_ID --retention 1080h --org keenetic --token YOUR_TOKEN
 ```
 
 ---
@@ -159,87 +164,61 @@ docker exec keenetic-influxdb influx bucket update \
 ## Управление
 
 ```bash
-# Посмотреть логи receiver
-docker compose logs -f receiver
-
-# Перезапустить только receiver (после изменения .env)
-docker compose restart receiver
-
-# Остановить всё
-docker compose down
-
-# Остановить и удалить данные (осторожно!)
-docker compose down -v
+docker compose logs -f receiver     # логи receiver в реальном времени
+docker compose restart receiver     # перезапустить после изменения .env
+docker compose down                 # остановить всё
+docker compose down -v              # остановить и удалить данные (осторожно!)
 ```
 
 ---
 
 ## Безопасность
 
-### Закрыть порты от интернета (рекомендуется)
-
-Receiver `8080` должен быть доступен только агентам. Если агенты подключены через WireGuard, можно слушать только на WG-интерфейсе:
+Receiver `8080` — закрыть для всех кроме WG-сети агентов:
 
 ```bash
-# В .env:
-LISTEN_HOST=10.0.1.1   # IP сервера в WG-сети
-```
-
-Или настроить firewall:
-
-```bash
-# Разрешить только из WG-сети
 ufw allow from 10.0.1.0/24 to any port 8080
 ufw deny 8080
 ```
 
-Grafana `3000` — оставить открытой или за nginx с HTTPS.
-
-### Nginx + HTTPS (опционально)
-
-```bash
-apt install nginx certbot python3-certbot-nginx
-```
-
-Пример конфига `/etc/nginx/sites-available/grafana`:
-
-```nginx
-server {
-    listen 443 ssl;
-    server_name monitor.example.com;
-    
-    location / {
-        proxy_pass http://localhost:3000;
-        proxy_set_header Host $host;
-    }
-}
-```
+Grafana `3000` — оставить открытой или поставить за nginx с HTTPS.
 
 ---
 
 ## Диагностика
 
-**Данные не приходят:**
+### receiver постоянно рестартует
+
+```bash
+docker compose logs receiver
+```
+
+**`IsADirectoryError: /app/receiver.log`** — Docker создал директорию вместо файла при монтировании volume.
+
+```bash
+# Удалить директорию-мусор
+rm -rf ./receiver.log
+# Убедиться что volume mount убран из docker-compose.yml (в текущей версии его нет)
+docker compose up -d --build receiver
+```
+
+### Данные не приходят от агентов
+
 ```bash
 docker compose logs receiver   # смотреть ошибки дешифрования
 ```
 
-**Grafana не видит данные:**
-1. Открыть Grafana → Configuration → Data Sources → InfluxDB → Test
-2. Проверить что переменная `router` в дашборде не пустая
+Ошибка `invalid token` — ENCRYPTION_KEY на агенте и сервере не совпадают.
 
-**InfluxDB не запускается:**
+### Grafana не видит данные
+
+1. Grafana → Connections → Data Sources → InfluxDB → Test
+2. Проверить что переменная `router` в дашборде не пустая (выбрать роутер из списка)
+
+### InfluxDB не запускается повторно
+
 ```bash
 docker compose logs influxdb
-# Если база уже инициализирована, убрать DOCKER_INFLUXDB_INIT_* из .env
 ```
 
----
-
-## Обновление дашборда
-
-Отредактировать `grafana/dashboards/keenetic.json` и перезапустить Grafana:
-
-```bash
-docker compose restart grafana
-```
+Если база уже была инициализирована — убрать `DOCKER_INFLUXDB_INIT_*` переменные из `.env` перед повторным запуском.
