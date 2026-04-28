@@ -206,13 +206,15 @@ def write_hotspot(router: str, ts: int, data):
     for h in active_hosts:
         mac = h.get("mac", "unknown")
         name = h.get("name") or h.get("hostname") or mac
+        ip = str(h.get("ip", ""))
         hp = (
             Point("hotspot_host")
             .tag("router", router)
             .tag("mac", mac)
             .tag("hostname", name)
-            .field("rx_bytes", int(h.get("rxbytes", 0)))
-            .field("tx_bytes", int(h.get("txbytes", 0)))
+            .tag("ip", ip)
+            .field("rx_bytes", safe_int(h.get("rxbytes", 0)))
+            .field("tx_bytes", safe_int(h.get("txbytes", 0)))
             .field("active", 1)
             .time(ns(ts))
         )
