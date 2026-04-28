@@ -27,6 +27,20 @@ log = logging.getLogger(__name__)
 _KDF_SALT = b"keenetic-monitor-v1"
 
 
+def safe_float(val, default: float = 0.0) -> float:
+    try:
+        return float(val)
+    except (TypeError, ValueError):
+        return default
+
+
+def safe_int(val, default: int = 0) -> int:
+    try:
+        return int(val)
+    except (TypeError, ValueError):
+        return default
+
+
 def make_fernet(passphrase: str) -> Fernet:
     kdf = PBKDF2HMAC(
         algorithm=hashes.SHA256(),
@@ -77,21 +91,23 @@ def ns(ts: int) -> int:
 def write_system(router: str, ts: int, data: dict):
     if not isinstance(data, dict):
         return
-    mem = data.get("memory", {}) or {}
-    mem_total = mem.get("total", 0)
-    mem_free = mem.get("free", 0)
-    mem_used_pct = round((1 - mem_free / mem_total) * 100, 1) if mem_total else 0
+    mem = data.get("memory", {})
+    if not isinstance(mem, dict):
+        mem = {}
+    mem_total = safe_int(mem.get("total", 0))
+    mem_free = safe_int(mem.get("free", 0))
+    mem_used_pct = round((1 - mem_free / mem_total) * 100, 1) if mem_total else 0.0
 
     p = (
         Point("system")
         .tag("router", router)
-        .field("uptime_sec", int(data.get("uptime", 0)))
-        .field("cpu_load_pct", float(data.get("cpuload", 0)))
-        .field("memory_total_kb", int(mem_total))
-        .field("memory_free_kb", int(mem_free))
+        .field("uptime_sec", safe_int(data.get("uptime", 0)))
+        .field("cpu_load_pct", safe_float(data.get("cpuload", 0)))
+        .field("memory_total_kb", mem_total)
+        .field("memory_free_kb", mem_free)
         .field("memory_used_pct", mem_used_pct)
-        .field("conn_free", int(data.get("connfree", 0)))
-        .field("conn_total", int(data.get("conntotal", 0)))
+        .field("conn_free", safe_int(data.get("connfree", 0)))
+        .field("conn_total", safe_int(data.get("conntotal", 0)))
         .time(ns(ts))
     )
     write_api.write(bucket=BUCKET, org=ORG, record=p)
@@ -100,7 +116,13 @@ def write_system(router: str, ts: int, data: dict):
 def write_interfaces(router: str, ts: int, data):
     if not data:
         return
-    ifaces = data if isinstance(data, list) else [data]
+    # Keenetic may return {iface_name: {...}, ...} instead of a list
+    if isinstance(data, dict):
+        ifaces = [{"id": k, **v} for k, v in data.items() if isinstance(v, dict)]
+    elif isinstance(data, list):
+        ifaces = data
+    else:
+        return
     points = []
     for iface in ifaces:
         if not isinstance(iface, dict):
@@ -110,11 +132,11 @@ def write_interfaces(router: str, ts: int, data):
             Point("interface")
             .tag("router", router)
             .tag("interface", name)
-            .tag("type", iface.get("type", "unknown"))
-            .field("rx_bytes", int(iface.get("rxbytes", 0)))
-            .field("tx_bytes", int(iface.get("txbytes", 0)))
-            .field("rx_packets", int(iface.get("rxpackets", 0)))
-            .field("tx_packets", int(iface.get("txpackets", 0)))
+            .tag("type", str(iface.get("type", "unknown")))
+            .field("rx_bytes", safe_int(iface.get("rxbytes", 0)))
+            .field("tx_bytes", safe_int(iface.get("txbytes", 0)))
+            .field("rx_packets", safe_int(iface.get("rxpackets", 0)))
+            .field("tx_packets", safe_int(iface.get("txpackets", 0)))
             .field("connected", 1 if iface.get("connected") else 0)
             .time(ns(ts))
         )
@@ -131,14 +153,14 @@ def write_lte(router: str, ts: int, data: dict):
         .tag("router", router)
         .tag("operator", str(data.get("operator", "unknown")))
         .tag("network_type", str(data.get("network-type", data.get("type", "unknown"))))
-        .field("rssi", float(data.get("rssi", 0)))
-        .field("rsrp", float(data.get("rsrp", 0)))
-        .field("rsrq", float(data.get("rsrq", 0)))
-        .field("sinr", float(data.get("sinr", 0)))
-        .field("signal_pct", float(data.get("signal", 0)))
+        .field("rssi", safe_float(data.get("rssi", 0)))
+        .field("rsrp", safe_float(data.get("rsrp", 0)))
+        .field("rsrq", safe_float(data.get("rsrq", 0)))
+        .field("sinr", safe_float(data.get("sinr", 0)))
+        .field("signal_pct", safe_float(data.get("signal", 0)))
         .field("connected", 1 if data.get("connected") else 0)
-        .field("rx_bytes", int(data.get("rxbytes", 0)))
-        .field("tx_bytes", int(data.get("txbytes", 0)))
+        .field("rx_bytes", safe_int(data.get("rxbytes", 0)))
+        .field("tx_bytes", safe_int(data.get("txbytes", 0)))
         .time(ns(ts))
     )
     write_api.write(bucket=BUCKET, org=ORG, record=p)
