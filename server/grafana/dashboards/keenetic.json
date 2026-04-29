@@ -4,10 +4,10 @@
   "title": "Keenetic Monitor",
   "tags": ["keenetic", "lte", "wireguard"],
   "timezone": "browser",
-  "refresh": "1m",
+  "refresh": "30s",
   "schemaVersion": 38,
   "version": 1,
-  "time": { "from": "now-3h", "to": "now" },
+  "time": { "from": "now-6h", "to": "now" },
   "templating": {
     "list": [
       {
@@ -25,553 +25,312 @@
     ]
   },
   "panels": [
-    {
-      "id": 1,
-      "type": "row",
-      "title": "System",
-      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 },
-      "collapsed": false
-    },
-    {
-      "id": 2,
-      "type": "gauge",
-      "title": "CPU Load %",
-      "gridPos": { "h": 5, "w": 4, "x": 0, "y": 1 },
-      "options": {
-        "reduceOptions": { "calcs": ["lastNotNull"] },
-        "orientation": "auto",
-        "showThresholdLabels": false,
-        "showThresholdMarkers": true
-      },
-      "fieldConfig": {
-        "defaults": {
-          "unit": "percent",
-          "min": 0, "max": 100,
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              { "color": "green", "value": null },
-              { "color": "yellow", "value": 60 },
-              { "color": "red", "value": 85 }
-            ]
-          }
-        }
-      },
-      "targets": [{
-        "refId": "A",
-        "datasource": { "type": "influxdb" },
-        "query": "from(bucket: \"keenetic\")\n  |> range(start: -5m)\n  |> filter(fn: (r) => r._measurement == \"system\" and r._field == \"cpu_load_pct\" and r.router =~ /^${router:regex}$/)\n  |> last()"
+
+    { "id": 30, "type": "row", "title": "Устройства — онлайн сейчас",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 }, "collapsed": false },
+
+    { "id": 31, "type": "stat", "title": "Активных устройств",
+      "gridPos": { "h": 4, "w": 3, "x": 0, "y": 1 },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background" },
+      "fieldConfig": { "defaults": { "unit": "short",
+        "thresholds": { "mode": "absolute", "steps": [
+          { "color": "green", "value": null }, { "color": "yellow", "value": 20 }, { "color": "red", "value": 40 }
+        ]}
+      }},
+      "targets": [{ "refId": "A", "datasource": { "type": "influxdb" },
+        "query": "from(bucket: \"keenetic\")\n  |> range(start: -5m)\n  |> filter(fn: (r) => r._measurement == \"hotspot_summary\" and r._field == \"active_devices\" and r.router =~ /^${router:regex}$/)\n  |> last()"
       }]
     },
-    {
-      "id": 3,
-      "type": "gauge",
-      "title": "Memory Used %",
-      "gridPos": { "h": 5, "w": 4, "x": 4, "y": 1 },
-      "options": {
-        "reduceOptions": { "calcs": ["lastNotNull"] },
-        "orientation": "auto"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "unit": "percent",
-          "min": 0, "max": 100,
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              { "color": "green", "value": null },
-              { "color": "yellow", "value": 70 },
-              { "color": "red", "value": 90 }
-            ]
-          }
-        }
-      },
-      "targets": [{
-        "refId": "A",
-        "datasource": { "type": "influxdb" },
-        "query": "from(bucket: \"keenetic\")\n  |> range(start: -5m)\n  |> filter(fn: (r) => r._measurement == \"system\" and r._field == \"memory_used_pct\" and r.router =~ /^${router:regex}$/)\n  |> last()"
+
+    { "id": 32, "type": "timeseries", "title": "Активных устройств — история",
+      "gridPos": { "h": 4, "w": 9, "x": 3, "y": 1 },
+      "fieldConfig": { "defaults": { "unit": "short", "min": 0 } },
+      "options": { "legend": { "displayMode": "hidden" } },
+      "targets": [{ "refId": "A", "datasource": { "type": "influxdb" },
+        "query": "from(bucket: \"keenetic\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"hotspot_summary\" and r._field == \"active_devices\" and r.router =~ /^${router:regex}$/)\n  |> aggregateWindow(every: v.windowPeriod, fn: max)"
       }]
     },
-    {
-      "id": 4,
-      "type": "stat",
-      "title": "Uptime",
-      "gridPos": { "h": 5, "w": 4, "x": 8, "y": 1 },
+
+    { "id": 4, "type": "stat", "title": "Аптайм роутера",
+      "gridPos": { "h": 4, "w": 3, "x": 12, "y": 1 },
       "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "value" },
       "fieldConfig": { "defaults": { "unit": "s" } },
-      "targets": [{
-        "refId": "A",
-        "datasource": { "type": "influxdb" },
+      "targets": [{ "refId": "A", "datasource": { "type": "influxdb" },
         "query": "from(bucket: \"keenetic\")\n  |> range(start: -5m)\n  |> filter(fn: (r) => r._measurement == \"system\" and r._field == \"uptime_sec\" and r.router =~ /^${router:regex}$/)\n  |> last()"
       }]
     },
-    {
-      "id": 5,
-      "type": "stat",
-      "title": "Active Connections",
-      "gridPos": { "h": 5, "w": 4, "x": 12, "y": 1 },
+
+    { "id": 2, "type": "gauge", "title": "CPU %",
+      "gridPos": { "h": 4, "w": 3, "x": 15, "y": 1 },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "showThresholdMarkers": true },
+      "fieldConfig": { "defaults": { "unit": "percent", "min": 0, "max": 100,
+        "thresholds": { "mode": "absolute", "steps": [
+          { "color": "green", "value": null }, { "color": "yellow", "value": 60 }, { "color": "red", "value": 85 }
+        ]}
+      }},
+      "targets": [{ "refId": "A", "datasource": { "type": "influxdb" },
+        "query": "from(bucket: \"keenetic\")\n  |> range(start: -5m)\n  |> filter(fn: (r) => r._measurement == \"system\" and r._field == \"cpu_load_pct\" and r.router =~ /^${router:regex}$/)\n  |> last()"
+      }]
+    },
+
+    { "id": 3, "type": "gauge", "title": "RAM %",
+      "gridPos": { "h": 4, "w": 3, "x": 18, "y": 1 },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "showThresholdMarkers": true },
+      "fieldConfig": { "defaults": { "unit": "percent", "min": 0, "max": 100,
+        "thresholds": { "mode": "absolute", "steps": [
+          { "color": "green", "value": null }, { "color": "yellow", "value": 70 }, { "color": "red", "value": 90 }
+        ]}
+      }},
+      "targets": [{ "refId": "A", "datasource": { "type": "influxdb" },
+        "query": "from(bucket: \"keenetic\")\n  |> range(start: -5m)\n  |> filter(fn: (r) => r._measurement == \"system\" and r._field == \"memory_used_pct\" and r.router =~ /^${router:regex}$/)\n  |> last()"
+      }]
+    },
+
+    { "id": 5, "type": "stat", "title": "TCP соединений",
+      "gridPos": { "h": 4, "w": 3, "x": 21, "y": 1 },
       "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "value" },
       "fieldConfig": { "defaults": { "unit": "short" } },
-      "targets": [{
-        "refId": "A",
-        "datasource": { "type": "influxdb" },
+      "targets": [{ "refId": "A", "datasource": { "type": "influxdb" },
         "query": "from(bucket: \"keenetic\")\n  |> range(start: -5m)\n  |> filter(fn: (r) => r._measurement == \"system\" and r._field == \"conn_total\" and r.router =~ /^${router:regex}$/)\n  |> last()"
       }]
     },
-    {
-      "id": 6,
-      "type": "timeseries",
-      "title": "CPU & Memory over time",
-      "gridPos": { "h": 7, "w": 16, "x": 0, "y": 6 },
-      "fieldConfig": {
-        "defaults": { "unit": "percent", "min": 0, "max": 100 }
+
+    { "id": 33, "type": "table", "title": "Текущие устройства (онлайн)",
+      "description": "Устройства активные в последние 5 минут. rx/tx — трафик с момента подключения.",
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 5 },
+      "options": { "sortBy": [{ "displayName": "Получено", "desc": true }], "footer": { "show": false } },
+      "fieldConfig": { "overrides": [
+        { "matcher": { "id": "byName", "options": "hostname" }, "properties": [{ "id": "displayName", "value": "Имя устройства" }] },
+        { "matcher": { "id": "byName", "options": "ip" },       "properties": [{ "id": "displayName", "value": "IP" }] },
+        { "matcher": { "id": "byName", "options": "mac" },      "properties": [{ "id": "displayName", "value": "MAC" }] },
+        { "matcher": { "id": "byName", "options": "rx_bytes" }, "properties": [{ "id": "unit", "value": "bytes" }, { "id": "displayName", "value": "Получено" }] },
+        { "matcher": { "id": "byName", "options": "tx_bytes" }, "properties": [{ "id": "unit", "value": "bytes" }, { "id": "displayName", "value": "Отправлено" }] }
+      ]},
+      "targets": [{ "refId": "A", "datasource": { "type": "influxdb" },
+        "query": "from(bucket: \"keenetic\")\n  |> range(start: -5m)\n  |> filter(fn: (r) => r._measurement == \"hotspot_host\" and r.router =~ /^${router:regex}$/)\n  |> last()\n  |> group()\n  |> pivot(rowKey: [\"mac\", \"hostname\", \"ip\"], columnKey: [\"_field\"], valueColumn: \"_value\")\n  |> keep(columns: [\"hostname\", \"ip\", \"mac\", \"rx_bytes\", \"tx_bytes\"])\n  |> sort(columns: [\"rx_bytes\"], desc: true)"
+      }]
+    },
+
+    { "id": 40, "type": "row", "title": "История устройств",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 13 }, "collapsed": false },
+
+    { "id": 41, "type": "stat", "title": "Уникальных устройств (7 дней)",
+      "gridPos": { "h": 4, "w": 4, "x": 0, "y": 14 },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background" },
+      "fieldConfig": { "defaults": { "unit": "short", "color": { "mode": "fixed", "fixedColor": "blue" } } },
+      "targets": [{ "refId": "A", "datasource": { "type": "influxdb" },
+        "query": "from(bucket: \"keenetic\")\n  |> range(start: -7d)\n  |> filter(fn: (r) => r._measurement == \"hotspot_host\" and r._field == \"active\" and r.router =~ /^${router:regex}$/)\n  |> group(columns: [\"mac\"])\n  |> distinct(column: \"mac\")\n  |> group()\n  |> count()"
+      }]
+    },
+
+    { "id": 44, "type": "state-timeline", "title": "История присутствия устройств",
+      "description": "Зелёный = онлайн. Красный = офлайн. Данные обновляются каждые ~60 сек.",
+      "gridPos": { "h": 12, "w": 20, "x": 4, "y": 14 },
+      "options": {
+        "mergeValues": true, "showValue": "never", "alignValue": "center", "rowHeight": 0.8,
+        "legend": { "displayMode": "list", "placement": "bottom" }
       },
+      "fieldConfig": { "defaults": {
+        "custom": { "lineWidth": 0, "fillOpacity": 85 },
+        "thresholds": { "mode": "absolute", "steps": [
+          { "color": "red", "value": null }, { "color": "red", "value": 0 }, { "color": "green", "value": 1 }
+        ]},
+        "mappings": [{ "type": "value", "options": { "0": { "text": "Офлайн" }, "1": { "text": "Онлайн" } } }]
+      }},
+      "targets": [{ "refId": "A", "datasource": { "type": "influxdb" },
+        "query": "from(bucket: \"keenetic\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"hotspot_host\" and r._field == \"active\" and r.router =~ /^${router:regex}$/)\n  |> map(fn: (r) => ({r with _field: r.hostname + \" (\" + r.ip + \")\"}))\n  |> group(columns: [\"_field\"])\n  |> aggregateWindow(every: v.windowPeriod, fn: last, createEmpty: true)\n  |> fill(value: 0)\n  |> group()"
+      }]
+    },
+
+    { "id": 42, "type": "table", "title": "Все устройства (7 дней) — история",
+      "description": "Все устройства которые подключались. Последняя активность.",
+      "gridPos": { "h": 10, "w": 14, "x": 0, "y": 26 },
+      "options": { "sortBy": [{ "displayName": "Последняя активность", "desc": true }], "footer": { "show": false } },
+      "fieldConfig": { "overrides": [
+        { "matcher": { "id": "byName", "options": "_time" },    "properties": [{ "id": "displayName", "value": "Последняя активность" }, { "id": "unit", "value": "dateTimeAsLocal" }] },
+        { "matcher": { "id": "byName", "options": "hostname" }, "properties": [{ "id": "displayName", "value": "Имя" }] },
+        { "matcher": { "id": "byName", "options": "ip" },       "properties": [{ "id": "displayName", "value": "IP" }] },
+        { "matcher": { "id": "byName", "options": "mac" },      "properties": [{ "id": "displayName", "value": "MAC" }] }
+      ]},
+      "targets": [{ "refId": "A", "datasource": { "type": "influxdb" },
+        "query": "from(bucket: \"keenetic\")\n  |> range(start: -7d)\n  |> filter(fn: (r) => r._measurement == \"hotspot_host\" and r._field == \"active\" and r.router =~ /^${router:regex}$/)\n  |> group(columns: [\"mac\", \"hostname\", \"ip\"])\n  |> last()\n  |> group()\n  |> keep(columns: [\"_time\", \"hostname\", \"ip\", \"mac\"])\n  |> sort(columns: [\"_time\"], desc: true)"
+      }]
+    },
+
+    { "id": 43, "type": "table", "title": "Первое появление устройств (7 дней)",
+      "description": "Когда устройство впервые появилось в сети.",
+      "gridPos": { "h": 10, "w": 10, "x": 14, "y": 26 },
+      "options": { "sortBy": [{ "displayName": "Первое появление", "desc": true }], "footer": { "show": false } },
+      "fieldConfig": { "overrides": [
+        { "matcher": { "id": "byName", "options": "_time" },    "properties": [{ "id": "displayName", "value": "Первое появление" }, { "id": "unit", "value": "dateTimeAsLocal" }] },
+        { "matcher": { "id": "byName", "options": "hostname" }, "properties": [{ "id": "displayName", "value": "Имя" }] },
+        { "matcher": { "id": "byName", "options": "ip" },       "properties": [{ "id": "displayName", "value": "IP" }] },
+        { "matcher": { "id": "byName", "options": "mac" },      "properties": [{ "id": "displayName", "value": "MAC" }] }
+      ]},
+      "targets": [{ "refId": "A", "datasource": { "type": "influxdb" },
+        "query": "from(bucket: \"keenetic\")\n  |> range(start: -7d)\n  |> filter(fn: (r) => r._measurement == \"hotspot_host\" and r._field == \"active\" and r.router =~ /^${router:regex}$/)\n  |> group(columns: [\"mac\", \"hostname\", \"ip\"])\n  |> first()\n  |> group()\n  |> keep(columns: [\"_time\", \"hostname\", \"ip\", \"mac\"])\n  |> sort(columns: [\"_time\"], desc: true)"
+      }]
+    },
+
+    { "id": 35, "type": "row", "title": "Трафик по устройствам",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 36 }, "collapsed": false },
+
+    { "id": 45, "type": "timeseries", "title": "Скорость трафика по устройствам",
+      "description": "Входящий (положит.) и исходящий (отриц.) трафик по каждому устройству.",
+      "gridPos": { "h": 10, "w": 24, "x": 0, "y": 37 },
+      "fieldConfig": { "defaults": { "unit": "Bps" } },
+      "options": { "tooltip": { "mode": "multi" } },
       "targets": [
-        {
-          "refId": "CPU",
-          "datasource": { "type": "influxdb" },
-          "query": "from(bucket: \"keenetic\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"system\" and r._field == \"cpu_load_pct\" and r.router =~ /^${router:regex}$/)\n  |> aggregateWindow(every: v.windowPeriod, fn: mean)"
+        { "refId": "RX", "datasource": { "type": "influxdb" },
+          "query": "from(bucket: \"keenetic\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"hotspot_host\" and r._field == \"rx_bytes\" and r.router =~ /^${router:regex}$/)\n  |> derivative(unit: 1s, nonNegative: true)\n  |> map(fn: (r) => ({r with _field: \"⬇ \" + r.hostname + \" (\" + r.ip + \")\"}))"
         },
-        {
-          "refId": "MEM",
-          "datasource": { "type": "influxdb" },
-          "query": "from(bucket: \"keenetic\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"system\" and r._field == \"memory_used_pct\" and r.router =~ /^${router:regex}$/)\n  |> aggregateWindow(every: v.windowPeriod, fn: mean)"
+        { "refId": "TX", "datasource": { "type": "influxdb" },
+          "query": "from(bucket: \"keenetic\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"hotspot_host\" and r._field == \"tx_bytes\" and r.router =~ /^${router:regex}$/)\n  |> derivative(unit: 1s, nonNegative: true)\n  |> map(fn: (r) => ({r with _value: r._value * -1.0, _field: \"⬆ \" + r.hostname + \" (\" + r.ip + \")\"}))"
         }
       ]
     },
-    {
-      "id": 10,
-      "type": "row",
-      "title": "LTE / Mobile Signal",
-      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 13 },
-      "collapsed": false
-    },
-    {
-      "id": 11,
-      "type": "stat",
-      "title": "Operator",
-      "gridPos": { "h": 4, "w": 4, "x": 0, "y": 14 },
-      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background" },
-      "fieldConfig": { "defaults": { "unit": "string" } },
-      "targets": [{
-        "refId": "A",
-        "datasource": { "type": "influxdb" },
-        "query": "from(bucket: \"keenetic\")\n  |> range(start: -5m)\n  |> filter(fn: (r) => r._measurement == \"lte\" and r._field == \"connected\" and r.router =~ /^${router:regex}$/)\n  |> last()\n  |> map(fn: (r) => ({r with _value: r.operator}))"
+
+    { "id": 46, "type": "table", "title": "Суммарный трафик за 24ч (по устройствам)",
+      "description": "Накопленный трафик каждого устройства за последние 24 часа (значение счётчика).",
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 47 },
+      "options": { "sortBy": [{ "displayName": "Получено", "desc": true }], "footer": { "show": false } },
+      "fieldConfig": { "overrides": [
+        { "matcher": { "id": "byName", "options": "hostname" }, "properties": [{ "id": "displayName", "value": "Имя устройства" }] },
+        { "matcher": { "id": "byName", "options": "ip" },       "properties": [{ "id": "displayName", "value": "IP" }] },
+        { "matcher": { "id": "byName", "options": "mac" },      "properties": [{ "id": "displayName", "value": "MAC" }] },
+        { "matcher": { "id": "byName", "options": "rx_bytes" }, "properties": [{ "id": "unit", "value": "bytes" }, { "id": "displayName", "value": "Получено" }] },
+        { "matcher": { "id": "byName", "options": "tx_bytes" }, "properties": [{ "id": "unit", "value": "bytes" }, { "id": "displayName", "value": "Отправлено" }] }
+      ]},
+      "targets": [{ "refId": "A", "datasource": { "type": "influxdb" },
+        "query": "from(bucket: \"keenetic\")\n  |> range(start: -24h)\n  |> filter(fn: (r) => r._measurement == \"hotspot_host\" and r.router =~ /^${router:regex}$/)\n  |> filter(fn: (r) => r._field == \"rx_bytes\" or r._field == \"tx_bytes\")\n  |> group(columns: [\"mac\", \"hostname\", \"ip\", \"_field\"])\n  |> last()\n  |> group()\n  |> pivot(rowKey: [\"mac\", \"hostname\", \"ip\"], columnKey: [\"_field\"], valueColumn: \"_value\")\n  |> keep(columns: [\"hostname\", \"ip\", \"mac\", \"rx_bytes\", \"tx_bytes\"])\n  |> sort(columns: [\"rx_bytes\"], desc: true)"
       }]
     },
-    {
-      "id": 12,
-      "type": "gauge",
-      "title": "Signal %",
-      "gridPos": { "h": 4, "w": 3, "x": 4, "y": 14 },
-      "options": { "reduceOptions": { "calcs": ["lastNotNull"] } },
-      "fieldConfig": {
-        "defaults": {
-          "unit": "percent", "min": 0, "max": 100,
-          "thresholds": { "mode": "absolute", "steps": [
-            { "color": "red", "value": null },
-            { "color": "yellow", "value": 40 },
-            { "color": "green", "value": 70 }
-          ]}
-        }
-      },
-      "targets": [{
-        "refId": "A",
-        "datasource": { "type": "influxdb" },
-        "query": "from(bucket: \"keenetic\")\n  |> range(start: -5m)\n  |> filter(fn: (r) => r._measurement == \"lte\" and r._field == \"signal_pct\" and r.router =~ /^${router:regex}$/)\n  |> last()"
-      }]
-    },
-    {
-      "id": 13,
-      "type": "timeseries",
-      "title": "LTE Signal Quality (RSRP / RSSI / SINR)",
-      "gridPos": { "h": 8, "w": 17, "x": 7, "y": 14 },
-      "fieldConfig": {
-        "defaults": { "unit": "dB" },
-        "overrides": [
-          { "matcher": { "id": "byName", "options": "SINR" }, "properties": [{ "id": "custom.axisPlacement", "value": "right" }] }
-        ]
-      },
+
+    { "id": 1, "type": "row", "title": "Система роутера",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 55 }, "collapsed": false },
+
+    { "id": 6, "type": "timeseries", "title": "CPU & Memory over time",
+      "gridPos": { "h": 8, "w": 16, "x": 0, "y": 56 },
+      "fieldConfig": { "defaults": { "unit": "percent", "min": 0, "max": 100 } },
       "targets": [
-        {
-          "refId": "RSRP",
-          "datasource": { "type": "influxdb" },
+        { "refId": "CPU", "datasource": { "type": "influxdb" },
+          "query": "from(bucket: \"keenetic\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"system\" and r._field == \"cpu_load_pct\" and r.router =~ /^${router:regex}$/)\n  |> aggregateWindow(every: v.windowPeriod, fn: mean)\n  |> set(key: \"_field\", value: \"CPU %\")"
+        },
+        { "refId": "MEM", "datasource": { "type": "influxdb" },
+          "query": "from(bucket: \"keenetic\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"system\" and r._field == \"memory_used_pct\" and r.router =~ /^${router:regex}$/)\n  |> aggregateWindow(every: v.windowPeriod, fn: mean)\n  |> set(key: \"_field\", value: \"RAM %\")"
+        }
+      ]
+    },
+
+    { "id": 13, "type": "timeseries", "title": "LTE Signal (RSRP / RSSI / SINR)",
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 56 },
+      "fieldConfig": { "defaults": { "unit": "dB" } },
+      "targets": [
+        { "refId": "RSRP", "datasource": { "type": "influxdb" },
           "query": "from(bucket: \"keenetic\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"lte\" and r._field == \"rsrp\" and r.router =~ /^${router:regex}$/)\n  |> aggregateWindow(every: v.windowPeriod, fn: mean)\n  |> set(key: \"_field\", value: \"RSRP\")"
         },
-        {
-          "refId": "RSSI",
-          "datasource": { "type": "influxdb" },
+        { "refId": "RSSI", "datasource": { "type": "influxdb" },
           "query": "from(bucket: \"keenetic\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"lte\" and r._field == \"rssi\" and r.router =~ /^${router:regex}$/)\n  |> aggregateWindow(every: v.windowPeriod, fn: mean)\n  |> set(key: \"_field\", value: \"RSSI\")"
         },
-        {
-          "refId": "SINR",
-          "datasource": { "type": "influxdb" },
+        { "refId": "SINR", "datasource": { "type": "influxdb" },
           "query": "from(bucket: \"keenetic\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"lte\" and r._field == \"sinr\" and r.router =~ /^${router:regex}$/)\n  |> aggregateWindow(every: v.windowPeriod, fn: mean)\n  |> set(key: \"_field\", value: \"SINR\")"
         }
       ]
     },
-    {
-      "id": 20,
-      "type": "row",
-      "title": "Traffic",
-      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 22 },
-      "collapsed": false
-    },
-    {
-      "id": 21,
-      "type": "timeseries",
-      "title": "LTE Traffic Rate (rx/tx)",
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 23 },
+
+    { "id": 20, "type": "row", "title": "WireGuard & LTE трафик",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 64 }, "collapsed": false },
+
+    { "id": 22, "type": "timeseries", "title": "WireGuard Traffic Rate (rx/tx)",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 65 },
       "fieldConfig": { "defaults": { "unit": "Bps" } },
       "targets": [
-        {
-          "refId": "RX",
-          "datasource": { "type": "influxdb" },
-          "query": "from(bucket: \"keenetic\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"lte\" and r._field == \"rx_bytes\" and r.router =~ /^${router:regex}$/)\n  |> derivative(unit: 1s, nonNegative: true)\n  |> set(key: \"_field\", value: \"LTE RX\")"
-        },
-        {
-          "refId": "TX",
-          "datasource": { "type": "influxdb" },
-          "query": "from(bucket: \"keenetic\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"lte\" and r._field == \"tx_bytes\" and r.router =~ /^${router:regex}$/)\n  |> derivative(unit: 1s, nonNegative: true)\n  |> map(fn: (r) => ({r with _value: r._value * -1.0}))\n  |> set(key: \"_field\", value: \"LTE TX\")"
-        }
-      ]
-    },
-    {
-      "id": 22,
-      "type": "timeseries",
-      "title": "WireGuard Traffic Rate (rx/tx)",
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 23 },
-      "fieldConfig": { "defaults": { "unit": "Bps" } },
-      "targets": [
-        {
-          "refId": "RX",
-          "datasource": { "type": "influxdb" },
+        { "refId": "RX", "datasource": { "type": "influxdb" },
           "query": "from(bucket: \"keenetic\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"wireguard\" and r._field == \"rx_bytes\" and r.router =~ /^${router:regex}$/)\n  |> derivative(unit: 1s, nonNegative: true)\n  |> set(key: \"_field\", value: \"WG RX\")"
         },
-        {
-          "refId": "TX",
-          "datasource": { "type": "influxdb" },
+        { "refId": "TX", "datasource": { "type": "influxdb" },
           "query": "from(bucket: \"keenetic\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"wireguard\" and r._field == \"tx_bytes\" and r.router =~ /^${router:regex}$/)\n  |> derivative(unit: 1s, nonNegative: true)\n  |> map(fn: (r) => ({r with _value: r._value * -1.0}))\n  |> set(key: \"_field\", value: \"WG TX\")"
         }
       ]
     },
-    {
-      "id": 30,
-      "type": "row",
-      "title": "Connected Devices (Hotspot)",
-      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 31 },
-      "collapsed": false
-    },
-    {
-      "id": 31,
-      "type": "stat",
-      "title": "Active Devices",
-      "gridPos": { "h": 4, "w": 4, "x": 0, "y": 32 },
-      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background" },
-      "fieldConfig": {
-        "defaults": {
-          "unit": "short",
-          "thresholds": { "mode": "absolute", "steps": [
-            { "color": "green", "value": null },
-            { "color": "yellow", "value": 20 },
-            { "color": "red", "value": 40 }
-          ]}
-        }
-      },
-      "targets": [{
-        "refId": "A",
-        "datasource": { "type": "influxdb" },
-        "query": "from(bucket: \"keenetic\")\n  |> range(start: -5m)\n  |> filter(fn: (r) => r._measurement == \"hotspot_summary\" and r._field == \"active_devices\" and r.router =~ /^${router:regex}$/)\n  |> last()"
-      }]
-    },
-    {
-      "id": 32,
-      "type": "timeseries",
-      "title": "Active Devices over Time",
-      "gridPos": { "h": 8, "w": 10, "x": 4, "y": 32 },
-      "fieldConfig": { "defaults": { "unit": "short" } },
-      "targets": [{
-        "refId": "A",
-        "datasource": { "type": "influxdb" },
-        "query": "from(bucket: \"keenetic\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"hotspot_summary\" and r._field == \"active_devices\" and r.router =~ /^${router:regex}$/)\n  |> aggregateWindow(every: v.windowPeriod, fn: max)"
-      }]
-    },
-    {
-      "id": 33,
-      "type": "table",
-      "title": "Текущие устройства (онлайн)",
-      "description": "Устройства активные в последние 5 минут. rx/tx — накопленный трафик с момента подключения.",
-      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 40 },
-      "options": {
-        "sortBy": [{ "displayName": "Получено", "desc": true }],
-        "footer": { "show": false }
-      },
-      "fieldConfig": {
-        "overrides": [
-          { "matcher": { "id": "byName", "options": "hostname" }, "properties": [{ "id": "displayName", "value": "Имя устройства" }] },
-          { "matcher": { "id": "byName", "options": "ip" },       "properties": [{ "id": "displayName", "value": "IP" }] },
-          { "matcher": { "id": "byName", "options": "mac" },      "properties": [{ "id": "displayName", "value": "MAC" }] },
-          { "matcher": { "id": "byName", "options": "rx_bytes" }, "properties": [{ "id": "unit", "value": "bytes" }, { "id": "displayName", "value": "Получено" }] },
-          { "matcher": { "id": "byName", "options": "tx_bytes" }, "properties": [{ "id": "unit", "value": "bytes" }, { "id": "displayName", "value": "Отправлено" }] }
-        ]
-      },
-      "targets": [{
-        "refId": "A",
-        "datasource": { "type": "influxdb" },
-        "query": "from(bucket: \"keenetic\")\n  |> range(start: -5m)\n  |> filter(fn: (r) => r._measurement == \"hotspot_host\" and r.router =~ /^${router:regex}$/)\n  |> last()\n  |> group()\n  |> pivot(rowKey: [\"mac\", \"hostname\", \"ip\"], columnKey: [\"_field\"], valueColumn: \"_value\")\n  |> keep(columns: [\"hostname\", \"ip\", \"mac\", \"rx_bytes\", \"tx_bytes\"])\n  |> sort(columns: [\"rx_bytes\"], desc: true)"
-      }]
-    },
-    {
-      "id": 40,
-      "type": "row",
-      "title": "Устройства — История подключений и трафик",
-      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 49 },
-      "collapsed": false
-    },
-    {
-      "id": 41,
-      "type": "stat",
-      "title": "Уникальных устройств (7 дней)",
-      "gridPos": { "h": 4, "w": 4, "x": 0, "y": 50 },
-      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background" },
-      "fieldConfig": { "defaults": { "unit": "short", "color": { "mode": "fixed", "fixedColor": "blue" } } },
-      "targets": [{
-        "refId": "A",
-        "datasource": { "type": "influxdb" },
-        "query": "from(bucket: \"keenetic\")\n  |> range(start: -7d)\n  |> filter(fn: (r) => r._measurement == \"hotspot_host\" and r._field == \"active\" and r.router =~ /^${router:regex}$/)\n  |> group(columns: [\"mac\"])\n  |> distinct(column: \"mac\")\n  |> group()\n  |> count()"
-      }]
-    },
-    {
-      "id": 42,
-      "type": "table",
-      "title": "Все устройства (7 дней) — история",
-      "description": "Каждое устройство которое подключалось. Последняя активность, IP, MAC.",
-      "gridPos": { "h": 12, "w": 14, "x": 0, "y": 54 },
-      "options": {
-        "sortBy": [{ "displayName": "Последняя активность", "desc": true }],
-        "footer": { "show": false }
-      },
-      "fieldConfig": {
-        "overrides": [
-          { "matcher": { "id": "byName", "options": "_time" },    "properties": [{ "id": "displayName", "value": "Последняя активность" }, { "id": "unit", "value": "dateTimeAsLocal" }] },
-          { "matcher": { "id": "byName", "options": "hostname" }, "properties": [{ "id": "displayName", "value": "Имя" }] },
-          { "matcher": { "id": "byName", "options": "ip" },       "properties": [{ "id": "displayName", "value": "IP" }] },
-          { "matcher": { "id": "byName", "options": "mac" },      "properties": [{ "id": "displayName", "value": "MAC" }] }
-        ]
-      },
-      "targets": [{
-        "refId": "A",
-        "datasource": { "type": "influxdb" },
-        "query": "from(bucket: \"keenetic\")\n  |> range(start: -7d)\n  |> filter(fn: (r) => r._measurement == \"hotspot_host\" and r._field == \"active\" and r.router =~ /^${router:regex}$/)\n  |> group(columns: [\"mac\", \"hostname\", \"ip\"])\n  |> last()\n  |> group()\n  |> keep(columns: [\"_time\", \"hostname\", \"ip\", \"mac\"])\n  |> sort(columns: [\"_time\"], desc: true)"
-      }]
-    },
-    {
-      "id": 43,
-      "type": "table",
-      "title": "Новые устройства (первое появление за 7 дней)",
-      "description": "Устройства которые впервые появились в сети в выбранный период",
-      "gridPos": { "h": 12, "w": 10, "x": 14, "y": 54 },
-      "options": {
-        "sortBy": [{ "displayName": "Первое появление", "desc": true }],
-        "footer": { "show": false }
-      },
-      "fieldConfig": {
-        "overrides": [
-          { "matcher": { "id": "byName", "options": "_time" },    "properties": [{ "id": "displayName", "value": "Первое появление" }, { "id": "unit", "value": "dateTimeAsLocal" }] },
-          { "matcher": { "id": "byName", "options": "hostname" }, "properties": [{ "id": "displayName", "value": "Имя" }] },
-          { "matcher": { "id": "byName", "options": "ip" },       "properties": [{ "id": "displayName", "value": "IP" }] },
-          { "matcher": { "id": "byName", "options": "mac" },      "properties": [{ "id": "displayName", "value": "MAC" }] }
-        ]
-      },
-      "targets": [{
-        "refId": "A",
-        "datasource": { "type": "influxdb" },
-        "query": "from(bucket: \"keenetic\")\n  |> range(start: -7d)\n  |> filter(fn: (r) => r._measurement == \"hotspot_host\" and r._field == \"active\" and r.router =~ /^${router:regex}$/)\n  |> group(columns: [\"mac\", \"hostname\", \"ip\"])\n  |> first()\n  |> group()\n  |> keep(columns: [\"_time\", \"hostname\", \"ip\", \"mac\"])\n  |> sort(columns: [\"_time\"], desc: true)"
-      }]
-    },
-    {
-      "id": 44,
-      "type": "state-timeline",
-      "title": "История присутствия устройств",
-      "description": "Зелёный = устройство активно в этом интервале опроса. Красный/пусто = офлайн.",
-      "gridPos": { "h": 12, "w": 24, "x": 0, "y": 66 },
-      "options": {
-        "mergeValues": true,
-        "showValue": "never",
-        "alignValue": "center",
-        "rowHeight": 0.8,
-        "legend": { "displayMode": "list", "placement": "bottom" }
-      },
-      "fieldConfig": {
-        "defaults": {
-          "custom": { "lineWidth": 0, "fillOpacity": 85 },
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              { "color": "red", "value": null },
-              { "color": "red", "value": 0 },
-              { "color": "green", "value": 1 }
-            ]
-          },
-          "mappings": [
-            { "type": "value", "options": { "0": { "text": "Офлайн" }, "1": { "text": "Онлайн" } } }
-          ]
-        }
-      },
-      "targets": [{
-        "refId": "A",
-        "datasource": { "type": "influxdb" },
-        "query": "from(bucket: \"keenetic\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"hotspot_host\" and r._field == \"active\" and r.router =~ /^${router:regex}$/)\n  |> aggregateWindow(every: v.windowPeriod, fn: last, createEmpty: true)\n  |> fill(value: 0)\n  |> map(fn: (r) => ({r with _field: r.hostname}))"
-      }]
-    },
-    {
-      "id": 45,
-      "type": "timeseries",
-      "title": "Скорость трафика по устройствам",
-      "description": "Скорость входящего (положительная) и исходящего (отрицательная) трафика по каждому устройству.",
-      "gridPos": { "h": 10, "w": 24, "x": 0, "y": 78 },
+
+    { "id": 21, "type": "timeseries", "title": "LTE Traffic Rate (rx/tx)",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 65 },
       "fieldConfig": { "defaults": { "unit": "Bps" } },
-      "options": { "tooltip": { "mode": "multi" } },
       "targets": [
-        {
-          "refId": "RX",
-          "datasource": { "type": "influxdb" },
-          "query": "from(bucket: \"keenetic\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"hotspot_host\" and r._field == \"rx_bytes\" and r.router =~ /^${router:regex}$/)\n  |> derivative(unit: 1s, nonNegative: true)\n  |> map(fn: (r) => ({r with _field: \"⬇ \" + r.ip}))"
+        { "refId": "RX", "datasource": { "type": "influxdb" },
+          "query": "from(bucket: \"keenetic\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"lte\" and r._field == \"rx_bytes\" and r.router =~ /^${router:regex}$/)\n  |> derivative(unit: 1s, nonNegative: true)\n  |> set(key: \"_field\", value: \"LTE RX\")"
         },
-        {
-          "refId": "TX",
-          "datasource": { "type": "influxdb" },
-          "query": "from(bucket: \"keenetic\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"hotspot_host\" and r._field == \"tx_bytes\" and r.router =~ /^${router:regex}$/)\n  |> derivative(unit: 1s, nonNegative: true)\n  |> map(fn: (r) => ({r with _value: r._value * -1.0, _field: \"⬆ \" + r.ip}))"
+        { "refId": "TX", "datasource": { "type": "influxdb" },
+          "query": "from(bucket: \"keenetic\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"lte\" and r._field == \"tx_bytes\" and r.router =~ /^${router:regex}$/)\n  |> derivative(unit: 1s, nonNegative: true)\n  |> map(fn: (r) => ({r with _value: r._value * -1.0}))\n  |> set(key: \"_field\", value: \"LTE TX\")"
         }
       ]
     },
-    {
-      "id": 46,
-      "type": "table",
-      "title": "Суммарный трафик за период (с момента подключения)",
-      "description": "Суммарный трафик каждого устройства. Счётчик сбрасывается при переподключении.",
-      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 88 },
-      "options": {
-        "sortBy": [{ "displayName": "Получено", "desc": true }],
-        "footer": { "show": false }
-      },
-      "fieldConfig": {
-        "overrides": [
-          { "matcher": { "id": "byName", "options": "hostname" }, "properties": [{ "id": "displayName", "value": "Имя устройства" }] },
-          { "matcher": { "id": "byName", "options": "ip" },       "properties": [{ "id": "displayName", "value": "IP" }] },
-          { "matcher": { "id": "byName", "options": "mac" },      "properties": [{ "id": "displayName", "value": "MAC" }] },
-          { "matcher": { "id": "byName", "options": "rx_bytes" }, "properties": [{ "id": "unit", "value": "bytes" }, { "id": "displayName", "value": "Получено" }] },
-          { "matcher": { "id": "byName", "options": "tx_bytes" }, "properties": [{ "id": "unit", "value": "bytes" }, { "id": "displayName", "value": "Отправлено" }] }
-        ]
-      },
-      "targets": [{
-        "refId": "A",
-        "datasource": { "type": "influxdb" },
-        "query": "from(bucket: \"keenetic\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"hotspot_host\" and r.router =~ /^${router:regex}$/)\n  |> filter(fn: (r) => r._field == \"rx_bytes\" or r._field == \"tx_bytes\")\n  |> group(columns: [\"mac\", \"hostname\", \"ip\", \"_field\"])\n  |> last()\n  |> group()\n  |> pivot(rowKey: [\"mac\", \"hostname\", \"ip\"], columnKey: [\"_field\"], valueColumn: \"_value\")\n  |> keep(columns: [\"hostname\", \"ip\", \"mac\", \"rx_bytes\", \"tx_bytes\"])\n  |> sort(columns: [\"rx_bytes\"], desc: true)"
-      }]
-    },
-    {
-      "id": 50,
-      "type": "row",
-      "title": "Станции / Радиомодемы (Ping Monitor)",
-      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 93 },
-      "collapsed": false
-    },
-    {
-      "id": 51,
-      "type": "stat",
-      "title": "Онлайн сейчас",
+
+    { "id": 50, "type": "row", "title": "Станции / Радиомодемы (Ping Monitor)",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 73 }, "collapsed": false },
+
+    { "id": 51, "type": "stat", "title": "Станций онлайн",
       "description": "Количество станций отвечающих на ping прямо сейчас",
-      "gridPos": { "h": 4, "w": 4, "x": 0, "y": 94 },
+      "gridPos": { "h": 4, "w": 4, "x": 0, "y": 74 },
       "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background" },
-      "fieldConfig": {
-        "defaults": {
-          "unit": "short",
-          "thresholds": { "mode": "absolute", "steps": [
-            { "color": "red", "value": null },
-            { "color": "yellow", "value": 1 },
-            { "color": "green", "value": 3 }
-          ]}
-        }
-      },
-      "targets": [{
-        "refId": "A",
-        "datasource": { "type": "influxdb" },
+      "fieldConfig": { "defaults": { "unit": "short",
+        "thresholds": { "mode": "absolute", "steps": [
+          { "color": "red", "value": null }, { "color": "yellow", "value": 1 }, { "color": "green", "value": 3 }
+        ]}
+      }},
+      "targets": [{ "refId": "A", "datasource": { "type": "influxdb" },
         "query": "from(bucket: \"keenetic\")\n  |> range(start: -2m)\n  |> filter(fn: (r) => r._measurement == \"device_ping\" and r._field == \"up\")\n  |> last()\n  |> sum()"
       }]
     },
-    {
-      "id": 52,
-      "type": "table",
-      "title": "Статус станций",
-      "description": "Ping-статус каждой удалённой станции. up=1 — онлайн, up=0 — нет ответа.",
-      "gridPos": { "h": 8, "w": 10, "x": 0, "y": 98 },
+
+    { "id": 52, "type": "table", "title": "Статус станций",
+      "description": "Ping-статус каждой удалённой станции. up=1 — онлайн.",
+      "gridPos": { "h": 8, "w": 10, "x": 0, "y": 78 },
       "options": { "sortBy": [{ "displayName": "Имя", "desc": false }], "footer": { "show": false } },
-      "fieldConfig": {
-        "overrides": [
-          { "matcher": { "id": "byName", "options": "up" }, "properties": [
-            { "id": "displayName", "value": "Статус" },
-            { "id": "mappings", "value": [
-              { "type": "value", "options": { "1": { "text": "ОНЛАЙН", "color": "green" }, "0": { "text": "ОФЛАЙН", "color": "red" } } }
-            ]},
-            { "id": "custom.displayMode", "value": "color-background" }
-          ]},
-          { "matcher": { "id": "byName", "options": "rtt_ms" }, "properties": [{ "id": "displayName", "value": "Задержка, мс" }, { "id": "unit", "value": "ms" }] },
-          { "matcher": { "id": "byName", "options": "name" }, "properties": [{ "id": "displayName", "value": "Имя" }] },
-          { "matcher": { "id": "byName", "options": "ip" }, "properties": [{ "id": "displayName", "value": "IP" }] }
-        ]
-      },
-      "targets": [{
-        "refId": "A",
-        "datasource": { "type": "influxdb" },
+      "fieldConfig": { "overrides": [
+        { "matcher": { "id": "byName", "options": "up" }, "properties": [
+          { "id": "displayName", "value": "Статус" },
+          { "id": "mappings", "value": [{ "type": "value", "options": {
+            "1": { "text": "ОНЛАЙН", "color": "green" },
+            "0": { "text": "ОФЛАЙН", "color": "red" }
+          }}]},
+          { "id": "custom.displayMode", "value": "color-background" }
+        ]},
+        { "matcher": { "id": "byName", "options": "rtt_ms" }, "properties": [{ "id": "displayName", "value": "Задержка, мс" }, { "id": "unit", "value": "ms" }] },
+        { "matcher": { "id": "byName", "options": "name" }, "properties": [{ "id": "displayName", "value": "Имя" }] },
+        { "matcher": { "id": "byName", "options": "ip" }, "properties": [{ "id": "displayName", "value": "IP" }] }
+      ]},
+      "targets": [{ "refId": "A", "datasource": { "type": "influxdb" },
         "query": "from(bucket: \"keenetic\")\n  |> range(start: -2m)\n  |> filter(fn: (r) => r._measurement == \"device_ping\")\n  |> last()\n  |> pivot(rowKey: [\"name\", \"ip\"], columnKey: [\"_field\"], valueColumn: \"_value\")\n  |> keep(columns: [\"name\", \"ip\", \"up\", \"rtt_ms\"])"
       }]
     },
-    {
-      "id": 53,
-      "type": "state-timeline",
-      "title": "История подключений станций",
-      "description": "Зелёный = станция отвечает. Серый = нет ответа. Виден точный момент включения/отключения.",
-      "gridPos": { "h": 10, "w": 14, "x": 10, "y": 98 },
+
+    { "id": 53, "type": "state-timeline", "title": "История подключений станций",
+      "description": "Зелёный = отвечает на ping. Красный = нет ответа.",
+      "gridPos": { "h": 8, "w": 14, "x": 10, "y": 78 },
       "options": {
-        "mergeValues": false,
-        "showValue": "never",
-        "alignValue": "center",
-        "rowHeight": 0.9,
+        "mergeValues": false, "showValue": "never", "alignValue": "center", "rowHeight": 0.9,
         "legend": { "displayMode": "list", "placement": "bottom" }
       },
-      "fieldConfig": {
-        "defaults": {
-          "custom": { "lineWidth": 0, "fillOpacity": 80 },
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              { "color": "red", "value": null },
-              { "color": "green", "value": 1 }
-            ]
-          }
-        }
-      },
-      "targets": [{
-        "refId": "A",
-        "datasource": { "type": "influxdb" },
-        "query": "from(bucket: \"keenetic\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"device_ping\" and r._field == \"up\")\n  |> aggregateWindow(every: v.windowPeriod, fn: last, createEmpty: true)\n  |> map(fn: (r) => ({r with _value: if exists r._value then r._value else 0}))"
+      "fieldConfig": { "defaults": {
+        "custom": { "lineWidth": 0, "fillOpacity": 80 },
+        "thresholds": { "mode": "absolute", "steps": [
+          { "color": "red", "value": null }, { "color": "green", "value": 1 }
+        ]}
+      }},
+      "targets": [{ "refId": "A", "datasource": { "type": "influxdb" },
+        "query": "from(bucket: \"keenetic\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"device_ping\" and r._field == \"up\")\n  |> map(fn: (r) => ({r with _field: r.name + \" (\" + r.ip + \")\"}))\n  |> group(columns: [\"_field\"])\n  |> aggregateWindow(every: v.windowPeriod, fn: last, createEmpty: true)\n  |> map(fn: (r) => ({r with _value: if exists r._value then r._value else 0}))\n  |> group()"
       }]
     },
-    {
-      "id": 54,
-      "type": "timeseries",
-      "title": "Задержка (RTT) по станциям",
-      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 108 },
-      "fieldConfig": {
-        "defaults": { "unit": "ms", "min": 0 },
-        "overrides": []
-      },
-      "targets": [{
-        "refId": "A",
-        "datasource": { "type": "influxdb" },
-        "query": "from(bucket: \"keenetic\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"device_ping\" and r._field == \"rtt_ms\")\n  |> aggregateWindow(every: v.windowPeriod, fn: mean)"
+
+    { "id": 54, "type": "timeseries", "title": "Задержка (RTT) по станциям",
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 86 },
+      "fieldConfig": { "defaults": { "unit": "ms", "min": 0 } },
+      "targets": [{ "refId": "A", "datasource": { "type": "influxdb" },
+        "query": "from(bucket: \"keenetic\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"device_ping\" and r._field == \"rtt_ms\")\n  |> aggregateWindow(every: v.windowPeriod, fn: mean)\n  |> map(fn: (r) => ({r with _field: r.name + \" (\" + r.ip + \")\"}))"
       }]
     }
+
   ]
 }
