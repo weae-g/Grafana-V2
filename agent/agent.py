@@ -6,6 +6,8 @@ Polls Keenetic API, encrypts payload, sends to central receiver.
 """
 
 import os
+import re as _re
+import subprocess
 import sys
 import time
 import hashlib
@@ -128,6 +130,22 @@ class KeeneticClient:
             return None
 
 
+def ping_internet(host: str = "8.8.8.8", count: int = 3) -> dict:
+    """Ping external host; returns {target, up, rtt_ms}."""
+    try:
+        result = subprocess.run(
+            ["ping", "-c", str(count), "-W", "2", host],
+            capture_output=True, text=True, timeout=15,
+        )
+        if result.returncode == 0:
+            m = _re.search(r"rtt .* = [\d.]+/([\d.]+)", result.stdout)
+            rtt = float(m.group(1)) if m else 0.0
+            return {"target": host, "up": True, "rtt_ms": rtt}
+    except Exception as e:
+        log.warning(f"Internet ping error: {e}")
+    return {"target": host, "up": False, "rtt_ms": 0.0}
+
+
 def build_endpoints(cfg: dict) -> dict:
     lte_iface = cfg.get("LTE_INTERFACE", "UsbLte0")
     wg_iface  = cfg.get("WG_INTERFACE",  "Wireguard1")
@@ -143,7 +161,7 @@ def build_endpoints(cfg: dict) -> dict:
     }
 
 
-def collect(client: KeeneticClient, endpoints: dict) -> Dict[str, Any]:
+def collect(client: KeeneticClient, endpoints: dict, internet_host: str) -> Dict[str, Any]:
     metrics: Dict[str, Any] = {}
     for name, endpoint in endpoints.items():
         data = client.get(endpoint)
@@ -151,6 +169,7 @@ def collect(client: KeeneticClient, endpoints: dict) -> Dict[str, Any]:
             metrics[name] = data
         else:
             log.warning(f"Skipped {name} (no data)")
+    metrics["internet"] = ping_internet(internet_host)
     return metrics
 
 
@@ -198,12 +217,13 @@ def main():
     )
     interval = int(cfg["POLL_INTERVAL"])
     endpoints = build_endpoints(cfg)
+    internet_host = cfg.get("INTERNET_CHECK_HOST", "8.8.8.8")
 
     log.info(
         f"Agent starting | router={cfg['ROUTER_ID']} "
         f"keenetic={cfg['KEENETIC_IP']}:{cfg['KEENETIC_PORT']} "
         f"wg={cfg.get('WG_INTERFACE','Wireguard1')} lte={cfg.get('LTE_INTERFACE','UsbLte0')} "
-        f"receiver={cfg['RECEIVER_URL']} interval={interval}s"
+        f"receiver={cfg['RECEIVER_URL']} interval={interval}s internet_check={internet_host}"
     )
 
     client.auth()
@@ -211,7 +231,7 @@ def main():
     while True:
         start = time.time()
         try:
-            metrics = collect(client, endpoints)
+            metrics = collect(client, endpoints, internet_host)
             if metrics:
                 send(metrics, cfg["ROUTER_ID"], cfg["RECEIVER_URL"], fernet)
             else:

@@ -179,6 +179,32 @@ def write_wireguard(router: str, ts: int, data: dict):
     )
     write_api.write(bucket=BUCKET, org=ORG, record=p)
 
+    peers = data.get("peer", data.get("peers", []))
+    if not peers:
+        return
+    if isinstance(peers, dict):
+        peers = [peers]
+    peer_points = []
+    for i, peer in enumerate(peers):
+        if not isinstance(peer, dict):
+            continue
+        allowed = peer.get("allowed-ips", peer.get("allowedips", ""))
+        if isinstance(allowed, list):
+            allowed = allowed[0] if allowed else ""
+        peer_id = str(allowed).split("/")[0] if "/" in str(allowed) else str(allowed) or f"peer-{i}"
+        pp = (
+            Point("wireguard_peer")
+            .tag("router", router)
+            .tag("peer", peer_id)
+            .field("rx_bytes", safe_int(peer.get("rxbytes", peer.get("rx-bytes", 0))))
+            .field("tx_bytes", safe_int(peer.get("txbytes", peer.get("tx-bytes", 0))))
+            .field("last_handshake", safe_int(peer.get("last-handshake", peer.get("lasthandshake", 0))))
+            .time(ns(ts))
+        )
+        peer_points.append(pp)
+    if peer_points:
+        write_api.write(bucket=BUCKET, org=ORG, record=peer_points)
+
 
 def write_hotspot(router: str, ts: int, data):
     if not data:
@@ -226,14 +252,34 @@ def write_hotspot(router: str, ts: int, data):
 def write_version(router: str, ts: int, data: dict):
     if not isinstance(data, dict):
         return
+    model   = str(data.get("model", "unknown"))
+    hw_ver  = str(data.get("hw-version", ""))
+    fw_ver  = str(data.get("version", ""))
     p = (
         Point("router_info")
         .tag("router", router)
-        .tag("model", str(data.get("model", "unknown")))
-        .tag("hw_version", str(data.get("hw-version", "")))
-        .tag("os_version", str(data.get("version", "")))
+        .tag("model", model)
+        .tag("hw_version", hw_ver)
+        .tag("os_version", fw_ver)
         .field("uptime_sec", int(data.get("uptime", 0)))
         .field("info", 1)
+        .field("model_name", model)
+        .field("hw_version_str", hw_ver)
+        .field("fw_version_str", fw_ver)
+        .time(ns(ts))
+    )
+    write_api.write(bucket=BUCKET, org=ORG, record=p)
+
+
+def write_internet(router: str, ts: int, data: dict):
+    if not isinstance(data, dict):
+        return
+    p = (
+        Point("internet")
+        .tag("router", router)
+        .tag("target", str(data.get("target", "unknown")))
+        .field("up", 1 if data.get("up") else 0)
+        .field("rtt_ms", safe_float(data.get("rtt_ms", 0)))
         .time(ns(ts))
     )
     write_api.write(bucket=BUCKET, org=ORG, record=p)
@@ -305,6 +351,7 @@ WRITERS = {
     "version":   write_version,
     "dhcp":      write_dhcp,
     "arp":       write_arp,
+    "internet":  write_internet,
 }
 
 
