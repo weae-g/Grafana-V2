@@ -21,6 +21,14 @@
         "includeAll": true,
         "allValue": ".+",
         "current": {}
+      },
+      {
+        "name": "server_ip",
+        "label": "IP сервера мониторинга",
+        "type": "textbox",
+        "description": "IP адрес машины где запущена Grafana/InfluxDB в локальной сети роутера. Найдите его в таблице 'Текущие устройства'.",
+        "current": { "value": "" },
+        "hide": 0
       }
     ]
   },
@@ -30,16 +38,16 @@
       "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 }, "collapsed": false },
 
     { "id": 31, "type": "stat", "title": "Активных устройств",
-      "description": "Количество Wi-Fi устройств подключённых к роутеру прямо сейчас.",
+      "description": "Количество Wi-Fi устройств подключённых прямо сейчас. Пропадает вместе со статусом роутера если роутер офлайн.",
       "gridPos": { "h": 4, "w": 3, "x": 0, "y": 1 },
       "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background" },
-      "fieldConfig": { "defaults": { "unit": "short",
+      "fieldConfig": { "defaults": { "unit": "short", "noValue": "—",
         "thresholds": { "mode": "absolute", "steps": [
           { "color": "green", "value": null }, { "color": "yellow", "value": 20 }, { "color": "red", "value": 40 }
         ]}
       }},
       "targets": [{ "refId": "A", "datasource": { "type": "influxdb" },
-        "query": "from(bucket: \"keenetic\")\n  |> range(start: -5m)\n  |> filter(fn: (r) => r._measurement == \"hotspot_summary\" and r._field == \"active_devices\" and r.router =~ /^${router:regex}$/)\n  |> last()"
+        "query": "from(bucket: \"keenetic\")\n  |> range(start: -3m)\n  |> filter(fn: (r) => r._measurement == \"hotspot_summary\" and r._field == \"active_devices\" and r.router =~ /^${router:regex}$/)\n  |> last()"
       }]
     },
 
@@ -54,12 +62,11 @@
     },
 
     { "id": 55, "type": "stat", "title": "Статус роутера",
-      "description": "ОНЛАЙН если данные от роутера получены в последние 3 минуты. ОФЛАЙН — роутер недоступен.",
+      "description": "ОНЛАЙН если данные от роутера получены в последние 3 минуты. Все панели 'сейчас' обнуляются одновременно с этим индикатором.",
       "gridPos": { "h": 4, "w": 3, "x": 9, "y": 1 },
       "options": { "reduceOptions": { "calcs": ["last"] }, "colorMode": "background", "noValue": "ОФЛАЙН" },
       "fieldConfig": { "defaults": {
-        "unit": "short",
-        "noValue": "ОФЛАЙН",
+        "unit": "short", "noValue": "ОФЛАЙН",
         "thresholds": { "mode": "absolute", "steps": [
           { "color": "red", "value": null }, { "color": "green", "value": 1 }
         ]},
@@ -71,17 +78,17 @@
     },
 
     { "id": 4, "type": "stat", "title": "Аптайм роутера",
-      "description": "Время работы роутера без перезагрузки.",
+      "description": "Время работы роутера без перезагрузки. Пропадает если роутер офлайн.",
       "gridPos": { "h": 4, "w": 3, "x": 12, "y": 1 },
       "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "value" },
-      "fieldConfig": { "defaults": { "unit": "s" } },
+      "fieldConfig": { "defaults": { "unit": "s", "noValue": "—" } },
       "targets": [{ "refId": "A", "datasource": { "type": "influxdb" },
-        "query": "from(bucket: \"keenetic\")\n  |> range(start: -5m)\n  |> filter(fn: (r) => r._measurement == \"system\" and r._field == \"uptime_sec\" and r.router =~ /^${router:regex}$/)\n  |> last()"
+        "query": "from(bucket: \"keenetic\")\n  |> range(start: -3m)\n  |> filter(fn: (r) => r._measurement == \"system\" and r._field == \"uptime_sec\" and r.router =~ /^${router:regex}$/)\n  |> last()"
       }]
     },
 
     { "id": 2, "type": "gauge", "title": "CPU %",
-      "description": "Текущая загрузка процессора роутера. Норма < 60%.",
+      "description": "Загрузка процессора роутера. Норма < 60%.",
       "gridPos": { "h": 4, "w": 3, "x": 15, "y": 1 },
       "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "showThresholdMarkers": true },
       "fieldConfig": { "defaults": { "unit": "percent", "min": 0, "max": 100,
@@ -90,7 +97,7 @@
         ]}
       }},
       "targets": [{ "refId": "A", "datasource": { "type": "influxdb" },
-        "query": "from(bucket: \"keenetic\")\n  |> range(start: -5m)\n  |> filter(fn: (r) => r._measurement == \"system\" and r._field == \"cpu_load_pct\" and r.router =~ /^${router:regex}$/)\n  |> last()"
+        "query": "from(bucket: \"keenetic\")\n  |> range(start: -3m)\n  |> filter(fn: (r) => r._measurement == \"system\" and r._field == \"cpu_load_pct\" and r.router =~ /^${router:regex}$/)\n  |> last()"
       }]
     },
 
@@ -104,22 +111,22 @@
         ]}
       }},
       "targets": [{ "refId": "A", "datasource": { "type": "influxdb" },
-        "query": "from(bucket: \"keenetic\")\n  |> range(start: -5m)\n  |> filter(fn: (r) => r._measurement == \"system\" and r._field == \"memory_used_pct\" and r.router =~ /^${router:regex}$/)\n  |> last()"
+        "query": "from(bucket: \"keenetic\")\n  |> range(start: -3m)\n  |> filter(fn: (r) => r._measurement == \"system\" and r._field == \"memory_used_pct\" and r.router =~ /^${router:regex}$/)\n  |> last()"
       }]
     },
 
     { "id": 5, "type": "stat", "title": "TCP соединений",
-      "description": "Количество активных TCP/UDP соединений через роутер.",
+      "description": "Количество активных TCP/UDP соединений через роутер. Высокое значение — активные загрузки или торренты.",
       "gridPos": { "h": 4, "w": 3, "x": 21, "y": 1 },
       "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "value" },
-      "fieldConfig": { "defaults": { "unit": "short" } },
+      "fieldConfig": { "defaults": { "unit": "short", "noValue": "—" } },
       "targets": [{ "refId": "A", "datasource": { "type": "influxdb" },
-        "query": "from(bucket: \"keenetic\")\n  |> range(start: -5m)\n  |> filter(fn: (r) => r._measurement == \"system\" and r._field == \"conn_total\" and r.router =~ /^${router:regex}$/)\n  |> last()"
+        "query": "from(bucket: \"keenetic\")\n  |> range(start: -3m)\n  |> filter(fn: (r) => r._measurement == \"system\" and r._field == \"conn_total\" and r.router =~ /^${router:regex}$/)\n  |> last()"
       }]
     },
 
     { "id": 33, "type": "table", "title": "Текущие устройства (онлайн)",
-      "description": "Устройства активные в последние 5 минут. Если вместо имени показан MAC-адрес — устройство не зарегистрировано в DHCP роутера, задайте имя в настройках Keenetic. rx/tx — трафик с момента последнего подключения.",
+      "description": "Устройства активные в последние 3 минуты. Пропадают когда роутер офлайн. Если вместо имени — MAC-адрес, задайте имя устройству в настройках DHCP Keenetic.",
       "gridPos": { "h": 8, "w": 24, "x": 0, "y": 5 },
       "options": { "sortBy": [{ "displayName": "Получено", "desc": true }], "footer": { "show": false } },
       "fieldConfig": { "overrides": [
@@ -130,7 +137,7 @@
         { "matcher": { "id": "byName", "options": "tx_bytes" }, "properties": [{ "id": "unit", "value": "bytes" }, { "id": "displayName", "value": "Отправлено" }] }
       ]},
       "targets": [{ "refId": "A", "datasource": { "type": "influxdb" },
-        "query": "from(bucket: \"keenetic\")\n  |> range(start: -5m)\n  |> filter(fn: (r) => r._measurement == \"hotspot_host\" and r.router =~ /^${router:regex}$/)\n  |> last()\n  |> group()\n  |> pivot(rowKey: [\"mac\", \"hostname\", \"ip\"], columnKey: [\"_field\"], valueColumn: \"_value\")\n  |> keep(columns: [\"hostname\", \"ip\", \"mac\", \"rx_bytes\", \"tx_bytes\"])\n  |> sort(columns: [\"rx_bytes\"], desc: true)"
+        "query": "from(bucket: \"keenetic\")\n  |> range(start: -3m)\n  |> filter(fn: (r) => r._measurement == \"hotspot_host\" and r.router =~ /^${router:regex}$/)\n  |> last()\n  |> group()\n  |> pivot(rowKey: [\"mac\", \"hostname\", \"ip\"], columnKey: [\"_field\"], valueColumn: \"_value\")\n  |> keep(columns: [\"hostname\", \"ip\", \"mac\", \"rx_bytes\", \"tx_bytes\"])\n  |> sort(columns: [\"rx_bytes\"], desc: true)"
       }]
     },
 
@@ -148,7 +155,7 @@
     },
 
     { "id": 44, "type": "state-timeline", "title": "История присутствия устройств",
-      "description": "Зелёный = онлайн, Красный = офлайн. Первая строка — сам роутер. Когда роутер выключен — все строки красные. Если имя устройства — MAC-адрес, задайте имя в DHCP роутера.",
+      "description": "Зелёный = онлайн, Красный = офлайн. Первая строка — сам роутер: когда вся строка красная — роутер был выключен. Если имя — MAC-адрес, задайте имя в DHCP роутера.",
       "gridPos": { "h": 12, "w": 20, "x": 4, "y": 14 },
       "options": {
         "mergeValues": true, "showValue": "never", "alignValue": "center", "rowHeight": 0.8,
@@ -163,10 +170,10 @@
       }},
       "targets": [
         { "refId": "A", "datasource": { "type": "influxdb" },
-          "query": "from(bucket: \"keenetic\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"system\" and r._field == \"uptime_sec\" and r.router =~ /^${router:regex}$/)\n  |> map(fn: (r) => ({r with _value: 1, _field: \"Роутер \" + r.router}))\n  |> group(columns: [\"_field\"])\n  |> aggregateWindow(every: v.windowPeriod, fn: last, createEmpty: true)\n  |> map(fn: (r) => ({r with _value: if exists r._value then 1 else 0}))\n  |> keep(columns: [\"_time\", \"_value\", \"_field\"])"
+          "query": "from(bucket: \"keenetic\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"system\" and r._field == \"uptime_sec\" and r.router =~ /^${router:regex}$/)\n  |> map(fn: (r) => ({r with _value: 1, _field: \"Роутер \" + r.router}))\n  |> group(columns: [\"_field\"])\n  |> aggregateWindow(every: 2m, fn: last, createEmpty: true)\n  |> map(fn: (r) => ({r with _value: if exists r._value then 1 else 0}))\n  |> keep(columns: [\"_time\", \"_value\", \"_field\"])"
         },
         { "refId": "B", "datasource": { "type": "influxdb" },
-          "query": "from(bucket: \"keenetic\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"hotspot_host\" and r._field == \"active\" and r.router =~ /^${router:regex}$/)\n  |> map(fn: (r) => ({r with _field: r.hostname + \" (\" + r.ip + \")\"}))\n  |> group(columns: [\"_field\"])\n  |> aggregateWindow(every: v.windowPeriod, fn: last, createEmpty: true)\n  |> fill(value: 0)\n  |> keep(columns: [\"_time\", \"_value\", \"_field\"])"
+          "query": "from(bucket: \"keenetic\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"hotspot_host\" and r._field == \"active\" and r.router =~ /^${router:regex}$/)\n  |> map(fn: (r) => ({r with _field: r.hostname + \" (\" + r.ip + \")\"}))\n  |> group(columns: [\"_field\"])\n  |> aggregateWindow(every: 2m, fn: last, createEmpty: true)\n  |> fill(value: 0)\n  |> keep(columns: [\"_time\", \"_value\", \"_field\"])"
         }
       ]
     },
@@ -202,7 +209,7 @@
     },
 
     { "id": 57, "type": "table", "title": "Новые устройства (за последние 24ч)",
-      "description": "Устройства, которые впервые подключились к роутеру за последние 24 часа. Помогает обнаружить незнакомые устройства в сети.",
+      "description": "Устройства, которые впервые подключились к роутеру за последние 24 часа. Помогает обнаружить незнакомые устройства.",
       "gridPos": { "h": 6, "w": 24, "x": 0, "y": 36 },
       "options": { "sortBy": [{ "displayName": "Первое появление", "desc": true }], "footer": { "show": false } },
       "fieldConfig": { "defaults": {
@@ -223,7 +230,7 @@
       "gridPos": { "h": 1, "w": 24, "x": 0, "y": 42 }, "collapsed": false },
 
     { "id": 45, "type": "timeseries", "title": "Скорость трафика по устройствам",
-      "description": "Входящий трафик (выше нуля) и исходящий (ниже нуля) для каждого устройства в байтах/с. Показывает кто активно потребляет интернет в данный момент.",
+      "description": "Скорость для каждого Wi-Fi устройства в байтах/с. RX выше нуля — скачивание, TX ниже нуля — отправка. Помогает найти кто перегружает интернет.",
       "gridPos": { "h": 10, "w": 24, "x": 0, "y": 43 },
       "fieldConfig": { "defaults": { "unit": "Bps" } },
       "options": { "tooltip": { "mode": "multi" } },
@@ -238,8 +245,8 @@
     },
 
     { "id": 46, "type": "table", "title": "Суммарный трафик за 24ч (по устройствам)",
-      "description": "Накопленный трафик каждого устройства за последние 24 часа. Включает сервер мониторинга. Если устройство показывает MAC — задайте имя в DHCP роутера.",
-      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 53 },
+      "description": "Накопленный трафик каждого устройства за 24 часа. Найдите здесь IP вашего сервера мониторинга и введите его в переменную 'IP сервера мониторинга' вверху.",
+      "gridPos": { "h": 6, "w": 24, "x": 0, "y": 53 },
       "options": { "sortBy": [{ "displayName": "Получено", "desc": true }], "footer": { "show": false } },
       "fieldConfig": { "overrides": [
         { "matcher": { "id": "byName", "options": "hostname" }, "properties": [{ "id": "displayName", "value": "Имя устройства" }] },
@@ -253,12 +260,27 @@
       }]
     },
 
+    { "id": 62, "type": "timeseries", "title": "Трафик сервера мониторинга (${server_ip})",
+      "description": "Трафик устройства с IP ${server_ip} — сервер где запущены Grafana и InfluxDB. Введите IP в поле 'IP сервера мониторинга' вверху страницы. Показывает сколько трафика потребляет сама система мониторинга через Wi-Fi/LAN роутера.",
+      "gridPos": { "h": 6, "w": 24, "x": 0, "y": 59 },
+      "fieldConfig": { "defaults": { "unit": "Bps" } },
+      "options": { "tooltip": { "mode": "multi" } },
+      "targets": [
+        { "refId": "RX", "datasource": { "type": "influxdb" },
+          "query": "from(bucket: \"keenetic\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"hotspot_host\" and r._field == \"rx_bytes\" and r.router =~ /^${router:regex}$/ and r.ip == \"${server_ip}\")\n  |> derivative(unit: 1s, nonNegative: true)\n  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)\n  |> set(key: \"_field\", value: \"RX сервер (скачано)\")"
+        },
+        { "refId": "TX", "datasource": { "type": "influxdb" },
+          "query": "from(bucket: \"keenetic\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"hotspot_host\" and r._field == \"tx_bytes\" and r.router =~ /^${router:regex}$/ and r.ip == \"${server_ip}\")\n  |> derivative(unit: 1s, nonNegative: true)\n  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)\n  |> map(fn: (r) => ({r with _value: r._value * -1.0}))\n  |> set(key: \"_field\", value: \"TX сервер (отправлено)\")"
+        }
+      ]
+    },
+
     { "id": 1, "type": "row", "title": "Система роутера",
-      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 61 }, "collapsed": false },
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 65 }, "collapsed": false },
 
     { "id": 56, "type": "table", "title": "Информация о роутере",
-      "description": "Модель, версия аппаратной части и прошивки роутера.",
-      "gridPos": { "h": 3, "w": 24, "x": 0, "y": 62 },
+      "description": "Модель, версия аппаратной части и прошивки роутера. Появляется после деплоя обновлённого receiver.py.",
+      "gridPos": { "h": 3, "w": 24, "x": 0, "y": 66 },
       "options": { "footer": { "show": false } },
       "fieldConfig": { "overrides": [
         { "matcher": { "id": "byName", "options": "router" },          "properties": [{ "id": "displayName", "value": "Роутер" }] },
@@ -273,7 +295,7 @@
 
     { "id": 6, "type": "timeseries", "title": "CPU & Memory over time",
       "description": "История нагрузки на процессор и память роутера. Помогает выявить периоды высокой нагрузки.",
-      "gridPos": { "h": 8, "w": 16, "x": 0, "y": 65 },
+      "gridPos": { "h": 8, "w": 16, "x": 0, "y": 69 },
       "fieldConfig": { "defaults": { "unit": "percent", "min": 0, "max": 100 } },
       "targets": [
         { "refId": "CPU", "datasource": { "type": "influxdb" },
@@ -287,7 +309,7 @@
 
     { "id": 13, "type": "timeseries", "title": "LTE Signal (RSRP / RSSI / SINR)",
       "description": "Качество LTE сигнала: RSRP — мощность (норма > -100 dBm), RSSI — общий уровень (норма > -80 dBm), SINR — сигнал/шум (норма > 3 dB).",
-      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 65 },
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 69 },
       "fieldConfig": { "defaults": { "unit": "dB" } },
       "targets": [
         { "refId": "RSRP", "datasource": { "type": "influxdb" },
@@ -303,12 +325,11 @@
     },
 
     { "id": 58, "type": "stat", "title": "Интернет",
-      "description": "Доступность интернета с точки зрения агента: ping до 8.8.8.8 через роутер. Если роутер ОНЛАЙН, а интернет ОФЛАЙН — проблема с провайдером или SIM-картой.",
-      "gridPos": { "h": 4, "w": 4, "x": 0, "y": 73 },
+      "description": "Доступность интернета: ping до 8.8.8.8 через роутер с сервера агента. Если роутер ОНЛАЙН, а Интернет ОФЛАЙН — проблема с провайдером или SIM-картой.",
+      "gridPos": { "h": 4, "w": 4, "x": 0, "y": 77 },
       "options": { "reduceOptions": { "calcs": ["last"] }, "colorMode": "background", "noValue": "НЕТ ДАННЫХ" },
       "fieldConfig": { "defaults": {
-        "unit": "short",
-        "noValue": "НЕТ ДАННЫХ",
+        "unit": "short", "noValue": "НЕТ ДАННЫХ",
         "thresholds": { "mode": "absolute", "steps": [
           { "color": "red", "value": null }, { "color": "green", "value": 1 }
         ]},
@@ -323,8 +344,8 @@
     },
 
     { "id": 59, "type": "state-timeline", "title": "История доступности интернета",
-      "description": "Зелёный = интернет доступен (ping до 8.8.8.8 успешен). Красный = нет ответа. Позволяет видеть когда был отвал интернета.",
-      "gridPos": { "h": 4, "w": 20, "x": 4, "y": 73 },
+      "description": "Зелёный = интернет доступен (ping 8.8.8.8 успешен). Красный = нет ответа. Показывает когда был отвал интернета.",
+      "gridPos": { "h": 4, "w": 20, "x": 4, "y": 77 },
       "options": {
         "mergeValues": true, "showValue": "never", "alignValue": "center", "rowHeight": 0.9,
         "legend": { "displayMode": "hidden" }
@@ -337,44 +358,44 @@
         "mappings": [{ "type": "value", "options": { "0": { "text": "Офлайн" }, "1": { "text": "Онлайн" } } }]
       }},
       "targets": [{ "refId": "A", "datasource": { "type": "influxdb" },
-        "query": "from(bucket: \"keenetic\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"internet\" and r._field == \"up\" and r.router =~ /^${router:regex}$/)\n  |> map(fn: (r) => ({r with _field: \"Интернет -> \" + r.target}))\n  |> group(columns: [\"_field\"])\n  |> aggregateWindow(every: v.windowPeriod, fn: last, createEmpty: true)\n  |> map(fn: (r) => ({r with _value: if exists r._value then r._value else 0}))\n  |> keep(columns: [\"_time\", \"_value\", \"_field\"])"
+        "query": "from(bucket: \"keenetic\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"internet\" and r._field == \"up\" and r.router =~ /^${router:regex}$/)\n  |> map(fn: (r) => ({r with _field: \"Интернет -> \" + r.target}))\n  |> group(columns: [\"_field\"])\n  |> aggregateWindow(every: 2m, fn: last, createEmpty: true)\n  |> map(fn: (r) => ({r with _value: if exists r._value then r._value else 0}))\n  |> keep(columns: [\"_time\", \"_value\", \"_field\"])"
       }]
     },
 
     { "id": 20, "type": "row", "title": "WireGuard & LTE трафик",
-      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 77 }, "collapsed": false },
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 81 }, "collapsed": false },
 
-    { "id": 22, "type": "timeseries", "title": "WireGuard Traffic Rate (rx/tx)",
-      "description": "Суммарная скорость трафика через WireGuard VPN туннель. RX — входящий (от пиров), TX — исходящий (к пирам).",
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 78 },
+    { "id": 22, "type": "timeseries", "title": "WireGuard — суммарный трафик (= трафик агента)",
+      "description": "Суммарный трафик WireGuard туннеля. Это и есть трафик который сервер мониторинга (агент) отправляет роутеру. RX — данные принятые роутером из туннеля, TX — отправленные в туннель.",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 82 },
       "fieldConfig": { "defaults": { "unit": "Bps" } },
       "targets": [
         { "refId": "RX", "datasource": { "type": "influxdb" },
-          "query": "from(bucket: \"keenetic\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"wireguard\" and r._field == \"rx_bytes\" and r.router =~ /^${router:regex}$/)\n  |> derivative(unit: 1s, nonNegative: true)\n  |> set(key: \"_field\", value: \"WG RX\")"
+          "query": "from(bucket: \"keenetic\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"wireguard\" and r._field == \"rx_bytes\" and r.router =~ /^${router:regex}$/)\n  |> derivative(unit: 1s, nonNegative: true)\n  |> set(key: \"_field\", value: \"WG RX (роутер принял)\")"
         },
         { "refId": "TX", "datasource": { "type": "influxdb" },
-          "query": "from(bucket: \"keenetic\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"wireguard\" and r._field == \"tx_bytes\" and r.router =~ /^${router:regex}$/)\n  |> derivative(unit: 1s, nonNegative: true)\n  |> map(fn: (r) => ({r with _value: r._value * -1.0}))\n  |> set(key: \"_field\", value: \"WG TX\")"
+          "query": "from(bucket: \"keenetic\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"wireguard\" and r._field == \"tx_bytes\" and r.router =~ /^${router:regex}$/)\n  |> derivative(unit: 1s, nonNegative: true)\n  |> map(fn: (r) => ({r with _value: r._value * -1.0}))\n  |> set(key: \"_field\", value: \"WG TX (роутер отправил)\")"
         }
       ]
     },
 
-    { "id": 21, "type": "timeseries", "title": "LTE Traffic Rate (rx/tx)",
-      "description": "Скорость потребления мобильного интернета (LTE) в байтах/с. Важно для контроля расхода трафика по тарифу.",
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 78 },
+    { "id": 21, "type": "timeseries", "title": "LTE — трафик мобильного интернета",
+      "description": "Скорость потребления мобильного (LTE/3G) интернета. RX — загрузка из интернета, TX — выгрузка. Важно для контроля расхода трафика по тарифу.",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 82 },
       "fieldConfig": { "defaults": { "unit": "Bps" } },
       "targets": [
         { "refId": "RX", "datasource": { "type": "influxdb" },
-          "query": "from(bucket: \"keenetic\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"lte\" and r._field == \"rx_bytes\" and r.router =~ /^${router:regex}$/)\n  |> derivative(unit: 1s, nonNegative: true)\n  |> set(key: \"_field\", value: \"LTE RX\")"
+          "query": "from(bucket: \"keenetic\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"lte\" and r._field == \"rx_bytes\" and r.router =~ /^${router:regex}$/)\n  |> derivative(unit: 1s, nonNegative: true)\n  |> set(key: \"_field\", value: \"LTE RX (загрузка)\")"
         },
         { "refId": "TX", "datasource": { "type": "influxdb" },
-          "query": "from(bucket: \"keenetic\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"lte\" and r._field == \"tx_bytes\" and r.router =~ /^${router:regex}$/)\n  |> derivative(unit: 1s, nonNegative: true)\n  |> map(fn: (r) => ({r with _value: r._value * -1.0}))\n  |> set(key: \"_field\", value: \"LTE TX\")"
+          "query": "from(bucket: \"keenetic\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"lte\" and r._field == \"tx_bytes\" and r.router =~ /^${router:regex}$/)\n  |> derivative(unit: 1s, nonNegative: true)\n  |> map(fn: (r) => ({r with _value: r._value * -1.0}))\n  |> set(key: \"_field\", value: \"LTE TX (выгрузка)\")"
         }
       ]
     },
 
-    { "id": 60, "type": "timeseries", "title": "WireGuard — трафик по пирам (rx/tx)",
-      "description": "Скорость трафика для каждого WireGuard пира отдельно. Пиры идентифицируются по IP из allowed-ips. Если пиров нет — роутер не передаёт peer-данные через API.",
-      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 86 },
+    { "id": 60, "type": "timeseries", "title": "WireGuard — трафик по пирам",
+      "description": "Трафик разбитый по каждому WireGuard пиру. Пир идентифицируется по IP из allowed-ips. Если панель пуста — Keenetic не отдаёт данные пиров через API (зависит от версии прошивки).",
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 90 },
       "fieldConfig": { "defaults": { "unit": "Bps" } },
       "options": { "tooltip": { "mode": "multi" } },
       "targets": [
@@ -388,11 +409,11 @@
     },
 
     { "id": 50, "type": "row", "title": "Станции / Радиомодемы (Ping Monitor)",
-      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 94 }, "collapsed": false },
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 98 }, "collapsed": false },
 
     { "id": 51, "type": "stat", "title": "Станций онлайн",
-      "description": "Количество удалённых станций/радиомодемов отвечающих на ping прямо сейчас. Требует настройки PING_TARGETS.",
-      "gridPos": { "h": 4, "w": 4, "x": 0, "y": 95 },
+      "description": "Количество удалённых станций отвечающих на ping прямо сейчас. Требует настройки PING_TARGETS в конфиге.",
+      "gridPos": { "h": 4, "w": 4, "x": 0, "y": 99 },
       "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background" },
       "fieldConfig": { "defaults": { "unit": "short",
         "thresholds": { "mode": "absolute", "steps": [
@@ -405,8 +426,8 @@
     },
 
     { "id": 52, "type": "table", "title": "Статус станций",
-      "description": "Текущий статус каждой удалённой станции: ОНЛАЙН если отвечает на ping, ОФЛАЙН — нет ответа. RTT — время отклика в мс.",
-      "gridPos": { "h": 8, "w": 10, "x": 0, "y": 99 },
+      "description": "Текущий статус каждой удалённой станции: ОНЛАЙН если отвечает на ping, ОФЛАЙН — нет ответа. RTT — время отклика.",
+      "gridPos": { "h": 8, "w": 10, "x": 0, "y": 103 },
       "options": { "sortBy": [{ "displayName": "Имя", "desc": false }], "footer": { "show": false } },
       "fieldConfig": { "overrides": [
         { "matcher": { "id": "byName", "options": "up" }, "properties": [
@@ -428,7 +449,7 @@
 
     { "id": 53, "type": "state-timeline", "title": "История подключений станций",
       "description": "Зелёный = отвечает на ping, Красный = нет ответа. История доступности каждой удалённой станции.",
-      "gridPos": { "h": 8, "w": 14, "x": 10, "y": 99 },
+      "gridPos": { "h": 8, "w": 14, "x": 10, "y": 103 },
       "options": {
         "mergeValues": false, "showValue": "never", "alignValue": "center", "rowHeight": 0.9,
         "legend": { "displayMode": "list", "placement": "bottom" }
@@ -440,13 +461,13 @@
         ]}
       }},
       "targets": [{ "refId": "A", "datasource": { "type": "influxdb" },
-        "query": "from(bucket: \"keenetic\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"device_ping\" and r._field == \"up\")\n  |> map(fn: (r) => ({r with _field: r.name + \" (\" + r.ip + \")\"}))\n  |> group(columns: [\"_field\"])\n  |> aggregateWindow(every: v.windowPeriod, fn: last, createEmpty: true)\n  |> map(fn: (r) => ({r with _value: if exists r._value then r._value else 0}))\n  |> keep(columns: [\"_time\", \"_value\", \"_field\"])"
+        "query": "from(bucket: \"keenetic\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"device_ping\" and r._field == \"up\")\n  |> map(fn: (r) => ({r with _field: r.name + \" (\" + r.ip + \")\"}))\n  |> group(columns: [\"_field\"])\n  |> aggregateWindow(every: 2m, fn: last, createEmpty: true)\n  |> map(fn: (r) => ({r with _value: if exists r._value then r._value else 0}))\n  |> keep(columns: [\"_time\", \"_value\", \"_field\"])"
       }]
     },
 
     { "id": 54, "type": "timeseries", "title": "Задержка (RTT) по станциям",
-      "description": "Задержка ответа (ping) до каждой удалённой станции в мс. Рост RTT указывает на ухудшение канала связи.",
-      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 107 },
+      "description": "Задержка ping до каждой удалённой станции в мс. Рост RTT указывает на ухудшение качества канала.",
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 111 },
       "fieldConfig": { "defaults": { "unit": "ms", "min": 0 } },
       "targets": [{ "refId": "A", "datasource": { "type": "influxdb" },
         "query": "from(bucket: \"keenetic\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"device_ping\" and r._field == \"rtt_ms\")\n  |> aggregateWindow(every: v.windowPeriod, fn: mean)\n  |> map(fn: (r) => ({r with _field: r.name + \" (\" + r.ip + \")\"}))"

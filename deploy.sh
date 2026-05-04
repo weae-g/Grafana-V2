@@ -1,32 +1,21 @@
 #!/bin/bash
-set -e
+set -euo pipefail
 cd "$(dirname "$0")"
 
-echo "=== Keenetic Monitor — Deploy ==="
+echo "=== Keenetic Monitor — Server Deploy ==="
 echo ""
 
-# Check server .env
 if [ ! -f server/.env ]; then
   echo "ERROR: server/.env не найден."
-  echo "Создай его из примера и заполни:"
   echo "  cp server/.env.example server/.env"
   echo "  nano server/.env"
   exit 1
 fi
 
-# Check agent .env
-if [ ! -f agent/.env ]; then
-  echo "ERROR: agent/.env не найден."
-  echo "Создай его из примера и заполни:"
-  echo "  cp agent/.env.example agent/.env"
-  echo "  nano agent/.env"
-  exit 1
-fi
-
 echo ">>> git pull"
 git pull
-
 echo ""
+
 echo ">>> docker compose build + start"
 cd server
 docker compose up -d --build
@@ -37,10 +26,14 @@ docker compose ps
 
 echo ""
 echo "=== Готово ==="
-echo "Grafana:  http://$(hostname -I | awk '{print $1}'):3000"
-echo "Receiver: http://$(hostname -I | awk '{print $1}'):8080/health"
+LOCAL_IP=$(hostname -I | awk '{print $1}')
+echo "Grafana:  http://${LOCAL_IP}:3000"
+echo "Receiver: http://${LOCAL_IP}:8080/health"
+echo ""
+echo "Деплой агента на удалённый сервер:"
+echo "  scp -r agent/ user@SERVER:/opt/keenetic-agent"
+echo "  ssh user@SERVER 'cd /opt/keenetic-agent && bash deploy-agent.sh'"
 echo ""
 echo "Логи:"
-echo "  docker compose logs -f receiver"
-echo "  docker compose logs -f agent"
-echo "  docker compose logs -f ping_monitor"
+echo "  cd server && docker compose logs -f receiver"
+echo "  cd server && docker compose logs -f grafana"
