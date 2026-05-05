@@ -13,9 +13,16 @@ if [ ! -f .env ]; then
 fi
 
 if ! command -v docker &>/dev/null; then
-  echo "ERROR: Docker не установлен."
-  echo "  curl -fsSL https://get.docker.com | sh"
-  exit 1
+  echo "Docker не установлен. Установить сейчас? [y/N]"
+  read -r answer
+  if [[ "$answer" =~ ^[Yy]$ ]]; then
+    echo ">>> Устанавливаю Docker..."
+    curl -fsSL https://get.docker.com | sh
+    echo ""
+  else
+    echo "Установи Docker вручную: curl -fsSL https://get.docker.com | sh"
+    exit 1
+  fi
 fi
 
 # Read vars from .env without sourcing (handles comments safely)
