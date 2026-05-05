@@ -309,8 +309,57 @@ curl http://CENTRAL-SERVER-IP:8080/health   # сервер доступен?
 docker logs keenetic-agent-router-spb-01 --tail 50  # ошибки агента
 ```
 
-**Нет данных в Grafana:**
+**Нет данных в Grafana — receiver пишет `401 Unauthorized` в логах:**
 ```bash
-cd server && docker compose logs receiver --tail 50   # ошибки receiver
-docker compose logs influxdb --tail 20                # ошибки БД
+cd server && docker compose logs receiver --tail 30
+# Если видишь: Writer 'system' error: (401) Reason: Unauthorized
+```
+Причина: InfluxDB инициализирован со старым токеном, который не совпадает с текущим `INFLUXDB_TOKEN`.
+Признак: `docker compose up` поднимает InfluxDB менее чем за 2 сек — значит старый том жив.
+
+Лечение — пересоздать базу (данных ещё нет, терять нечего):
+```bash
+cd server
+docker compose down
+docker volume rm server_influxdb-data server_influxdb-config
+docker volume ls | grep influxdb          # должно быть пусто
+docker compose up -d
+sleep 45 && curl http://localhost:8080/health  # ждём инициализацию ~30-40 сек
+# Должно: {"status":"ok","influxdb":true}
+```
+
+**Пароль Grafana не меняется после правки `.env`:**
+
+Grafana хранит пароль в томе `grafana-data`, при повторном запуске `.env` игнорируется.
+Сбросить без потери данных:
+```bash
+docker exec keenetic-grafana grafana-cli admin reset-admin-password НОВЫЙ_ПАРОЛЬ
+```
+
+**`ENCRYPTION_KEY` не совпадает на агенте и сервере:**
+```bash
+# На агент-сервере проверить:
+grep ENCRYPTION_KEY /opt/keenetic-agent/.env
+# На центральном сервере:
+grep ENCRYPTION_KEY ~/Grafana-V2/server/.env
+# Должны быть одинаковые. Если нет — исправить и перезапустить receiver:
+docker compose up -d --no-deps receiver
+```
+
+**Общий порядок проверки если что-то не работает:**
+```bash
+# 1. Агент шлёт данные?
+docker logs keenetic-agent-ROUTER_ID --tail 20
+# Должно быть: Sent to receiver: XXXX B raw → YYYY B encrypted
+
+# 2. Receiver принимает?
+docker compose logs receiver --tail 20
+# Должно быть: Stored: router=NAME keys=[...]
+
+# 3. InfluxDB принимает от receiver?
+# Если в логах receiver есть (401) — см. выше про пересоздание томов
+
+# 4. Grafana видит InfluxDB?
+curl http://localhost:8080/health
+# {"status":"ok","influxdb":true} — InfluxDB доступен
 ```
