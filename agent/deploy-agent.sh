@@ -5,32 +5,30 @@ cd "$(dirname "$0")"
 echo "=== Keenetic Agent Deploy ==="
 echo ""
 
+# ── .env check ────────────────────────────────────────────────────────────────
 if [ ! -f .env ]; then
   echo "ERROR: .env не найден."
-  echo "  cp .env.example .env"
-  echo "  nano .env"
+  echo "  cp .env.example .env && nano .env"
   exit 1
 fi
 
-# Check Docker — command -v may miss it right after install, so also check /usr/bin/docker
-if ! command -v docker &>/dev/null && [ ! -x "/usr/bin/docker" ]; then
+# ── Docker check ──────────────────────────────────────────────────────────────
+export PATH="$PATH:/usr/bin:/usr/local/bin"
+if ! command -v docker &>/dev/null; then
   echo "Docker не установлен. Установить сейчас? [y/N]"
   read -r answer
   if [[ "$answer" =~ ^[Yy]$ ]]; then
     echo ">>> Устанавливаю Docker..."
     curl -fsSL https://get.docker.com | sh
-    export PATH="$PATH:/usr/bin"
     echo ""
   else
     echo "Установи Docker вручную: curl -fsSL https://get.docker.com | sh"
     exit 1
   fi
 fi
-# Ensure docker is on PATH if installed to /usr/bin
-export PATH="$PATH:/usr/bin"
 
-# Read vars from .env without sourcing (handles comments safely)
-_val() { grep -E "^${1}=" .env 2>/dev/null | head -1 | cut -d= -f2- | tr -d '"' | tr -d "'"; }
+# ── Read .env (|| true — чтобы set -e не убивал скрипт при отсутствии ключа) ──
+_val() { grep -E "^${1}=" .env 2>/dev/null | head -1 | cut -d= -f2- | tr -d '"' | tr -d "'" || true; }
 ROUTER_ID=$(_val ROUTER_ID)
 MEM_AGENT=$(_val MEM_AGENT)
 ROUTER_ID=${ROUTER_ID:-agent}
@@ -44,14 +42,21 @@ echo "Container:    $CONTAINER"
 echo "Memory limit: $MEM_AGENT"
 echo ""
 
+# ── Build ─────────────────────────────────────────────────────────────────────
 echo ">>> Building image: $IMAGE"
 docker build -t "$IMAGE" .
 
+# ── Stop & remove old container if exists ─────────────────────────────────────
 echo ""
-echo ">>> Stopping old container (if running)"
-docker stop "$CONTAINER" 2>/dev/null && echo "  Stopped $CONTAINER" || true
-docker rm   "$CONTAINER" 2>/dev/null && echo "  Removed $CONTAINER" || true
+if docker ps -a --format '{{.Names}}' | grep -q "^${CONTAINER}$"; then
+  echo ">>> Контейнер $CONTAINER уже существует — пересоздаю"
+  docker stop "$CONTAINER" 2>/dev/null || true
+  docker rm   "$CONTAINER" 2>/dev/null || true
+else
+  echo ">>> Старого контейнера нет — создаю новый"
+fi
 
+# ── Start ─────────────────────────────────────────────────────────────────────
 echo ""
 echo ">>> Starting $CONTAINER"
 docker run -d \
@@ -62,6 +67,7 @@ docker run -d \
   -v "$(pwd)/.env:/app/.env:ro" \
   "$IMAGE"
 
+# ── Done ──────────────────────────────────────────────────────────────────────
 echo ""
 echo "=== Готово ==="
 docker ps --filter "name=${CONTAINER}" --format "table {{.Names}}\t{{.Status}}\t{{.Image}}"
