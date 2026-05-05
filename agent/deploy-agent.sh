@@ -12,18 +12,22 @@ if [ ! -f .env ]; then
   exit 1
 fi
 
-if ! command -v docker &>/dev/null; then
+# Check Docker — command -v may miss it right after install, so also check /usr/bin/docker
+if ! command -v docker &>/dev/null && [ ! -x "/usr/bin/docker" ]; then
   echo "Docker не установлен. Установить сейчас? [y/N]"
   read -r answer
   if [[ "$answer" =~ ^[Yy]$ ]]; then
     echo ">>> Устанавливаю Docker..."
     curl -fsSL https://get.docker.com | sh
+    export PATH="$PATH:/usr/bin"
     echo ""
   else
     echo "Установи Docker вручную: curl -fsSL https://get.docker.com | sh"
     exit 1
   fi
 fi
+# Ensure docker is on PATH if installed to /usr/bin
+export PATH="$PATH:/usr/bin"
 
 # Read vars from .env without sourcing (handles comments safely)
 _val() { grep -E "^${1}=" .env 2>/dev/null | head -1 | cut -d= -f2- | tr -d '"' | tr -d "'"; }
